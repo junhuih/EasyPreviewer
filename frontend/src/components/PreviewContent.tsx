@@ -10,6 +10,7 @@ import css from 'highlight.js/lib/languages/css'
 import python from 'highlight.js/lib/languages/python'
 import java from 'highlight.js/lib/languages/java'
 import type { PreviewSessionResponse } from '../types'
+import { CsvPreview } from './CsvPreview'
 import { PdfPreview } from './PdfPreview'
 
 hljs.registerLanguage('javascript', javascript)
@@ -76,11 +77,22 @@ export function PreviewContent({ session, emptyText }: PreviewContentProps) {
     return <img className="image-preview" src={session.contentUrl} alt={session.fileName} />
   }
 
+  if (session.previewMode === 'VIDEO') {
+    return (
+      <video className="video-preview" src={session.contentUrl} controls preload="metadata">
+        {session.fileName}
+      </video>
+    )
+  }
+
   if (textError) {
     return <p className="error-banner">{textError}</p>
   }
 
   if (session.previewMode === 'SPREADSHEET') {
+    if (session.extension === 'csv') {
+      return <CsvPreview url={session.contentUrl} />
+    }
     return <iframe className="viewer-frame spreadsheet-frame" src={session.contentUrl} title={session.fileName} />
   }
 

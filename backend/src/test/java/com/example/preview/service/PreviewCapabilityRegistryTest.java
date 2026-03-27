@@ -28,6 +28,22 @@ class PreviewCapabilityRegistryTest {
     }
 
     @Test
+    void shouldSupportMp4AsVideo() {
+        var capability = registry.resolve("mp4");
+        assertTrue(capability.supported());
+        assertFalse(capability.conversionRequired());
+        assertEquals(PreviewMode.VIDEO, capability.previewMode());
+    }
+
+    @Test
+    void shouldSupportCsvWithoutConversion() {
+        var capability = registry.resolve("csv");
+        assertTrue(capability.supported());
+        assertFalse(capability.conversionRequired());
+        assertEquals(PreviewMode.SPREADSHEET, capability.previewMode());
+    }
+
+    @Test
     void shouldMarkCadAsUnsupported() {
         var capability = registry.resolve("dwg");
         assertFalse(capability.supported());

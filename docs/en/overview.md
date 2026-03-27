@@ -8,18 +8,19 @@ This project is a preview-only file viewer for bilingual products that need a co
 - Chinese and English only
 - Apache-2.0 licensed
 - Bundled third-party runtime assets remain under their own licenses
-- LibreOffice-powered Office conversion
+- LibreOffice-powered Office conversion where still needed
 - Narrow scope with explicit unsupported capabilities
 
 ## Supported
 
 - Office documents converted to PDF through LibreOffice
-- `.xlsx` preview through a bundled spreadsheet viewer stack
+- `.xlsx` and `.xlsm` preview through a bundled spreadsheet viewer stack
+- Native CSV table preview
 - PDFs
 - Plain text and code files
 - Markdown files
 - Common images
-- CSV as read-only content
+- Browser-native video files
 
 ## Not Supported
 

@@ -14,10 +14,14 @@ public class PreviewCapabilityRegistry {
             "doc", "docx", "ppt", "pptx", "odt", "odp", "wps"
     );
     private static final Set<String> SPREADSHEET_EXTENSIONS = Set.of(
-            "xls", "xlsx", "xlsm", "xlt", "xltm", "ods", "csv"
+            "xls", "xlsx", "xlsm", "xlt", "xltm", "ods"
     );
+    private static final Set<String> CSV_EXTENSIONS = Set.of("csv");
     private static final Set<String> IMAGE_EXTENSIONS = Set.of(
             "png", "jpg", "jpeg", "gif", "webp", "svg"
+    );
+    private static final Set<String> VIDEO_EXTENSIONS = Set.of(
+            "mp4", "webm", "mov", "m4v", "ogg"
     );
     private static final Set<String> TEXT_EXTENSIONS = Set.of(
             "txt", "json", "xml", "yaml", "yml", "java", "js", "ts", "tsx", "jsx", "py", "css", "html", "csv"
@@ -41,8 +45,14 @@ public class PreviewCapabilityRegistry {
         if (SPREADSHEET_EXTENSIONS.contains(extension)) {
             return new PreviewCapability(true, PreviewMode.SPREADSHEET, true, "preview.ready");
         }
+        if (CSV_EXTENSIONS.contains(extension)) {
+            return new PreviewCapability(true, PreviewMode.SPREADSHEET, false, "preview.ready");
+        }
         if (IMAGE_EXTENSIONS.contains(extension)) {
             return new PreviewCapability(true, PreviewMode.IMAGE, false, "preview.ready");
+        }
+        if (VIDEO_EXTENSIONS.contains(extension)) {
+            return new PreviewCapability(true, PreviewMode.VIDEO, false, "preview.ready");
         }
         if (MARKDOWN_EXTENSIONS.contains(extension)) {
             return new PreviewCapability(true, PreviewMode.MARKDOWN, false, "preview.ready");

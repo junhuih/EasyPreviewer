@@ -122,7 +122,13 @@ public class PreviewSessionService {
             case "gif" -> "image/gif";
             case "svg" -> "image/svg+xml";
             case "webp" -> "image/webp";
-            case "md", "markdown", "txt", "json", "xml", "yaml", "yml", "java", "js", "ts", "tsx", "jsx", "py", "css", "html", "csv"
+            case "mp4" -> "video/mp4";
+            case "webm" -> "video/webm";
+            case "mov" -> "video/quicktime";
+            case "m4v" -> "video/x-m4v";
+            case "ogg" -> "video/ogg";
+            case "csv" -> "text/csv; charset=UTF-8";
+            case "md", "markdown", "txt", "json", "xml", "yaml", "yml", "java", "js", "ts", "tsx", "jsx", "py", "css", "html"
                     -> "text/plain; charset=UTF-8";
             default -> "application/octet-stream";
         };

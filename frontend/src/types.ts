@@ -1,5 +1,5 @@
 export type PreviewStatus = 'READY' | 'PROCESSING' | 'UNSUPPORTED' | 'FAILED'
-export type PreviewMode = 'PDF' | 'SPREADSHEET' | 'IMAGE' | 'TEXT' | 'MARKDOWN' | 'UNSUPPORTED'
+export type PreviewMode = 'PDF' | 'SPREADSHEET' | 'IMAGE' | 'VIDEO' | 'TEXT' | 'MARKDOWN' | 'UNSUPPORTED'
 
 export interface PreviewSessionResponse {
   id: string

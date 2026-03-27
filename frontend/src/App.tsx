@@ -67,6 +67,11 @@ const demoFiles = [
     description: 'JPEG image sample for browser-native image preview.',
   },
   {
+    fileName: 'test_video.mp4',
+    label: 'MP4',
+    description: 'Inline video sample for browser-native playback preview.',
+  },
+  {
     fileName: 'sample-badge.svg',
     label: 'SVG',
     description: 'Vector image sample for browser-native preview.',
@@ -75,6 +80,9 @@ const demoFiles = [
 
 function App() {
   const { t, i18n } = useTranslation()
+  const query = new URLSearchParams(window.location.search)
+  const embeddedFileUrl = query.get('fileUrl') || query.get('url') || ''
+  const embeddedMode = embeddedFileUrl.length > 0
   const [loading, setLoading] = useState(false)
   const [session, setSession] = useState<PreviewSessionResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -121,11 +129,35 @@ function App() {
   }
 
   useEffect(() => {
+    if (embeddedMode) {
+      if (!session && !loading) {
+        void resolvePreview(embeddedFileUrl)
+      }
+      return
+    }
+
     if (!selectedFileName || session || loading) {
       return
     }
     void openDemo(selectedFileName)
-  }, [selectedFileName])
+  }, [embeddedFileUrl, embeddedMode, selectedFileName, session, loading])
+
+  if (embeddedMode) {
+    return (
+      <main className="embed-shell">
+        <section className="embed-frame" aria-label="Embedded preview frame">
+          {error ? <p className="error-banner">{error}</p> : null}
+          {session ? (
+            <div className="preview-frame preview-frame--embedded">
+              <PreviewContent session={session} emptyText={t('contentUnavailable')} />
+            </div>
+          ) : (
+            <p className="empty-state">{loading ? t('loadingAction') : statusTitle}</p>
+          )}
+        </section>
+      </main>
+    )
+  }
 
   return (
     <div className="app-shell">
