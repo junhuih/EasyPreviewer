@@ -1,0 +1,13 @@
+{
+  "product": "modern-preview-viewer",
+  "previewOnly": true,
+  "locales": [
+    "zh",
+    "en"
+  ],
+  "unsupported": [
+    "cad",
+    "tiff-conversion",
+    "media-transcoding"
+  ]
+}

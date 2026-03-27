@@ -1,0 +1,4 @@
+team,capability,status,owner
+platform,office-preview,supported,backend
+platform,cad-preview,unsupported,policy
+frontend,markdown-preview,supported,ui

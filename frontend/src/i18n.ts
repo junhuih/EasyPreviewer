@@ -14,6 +14,10 @@ const resources = {
       previewOnly: 'Preview only. Editing, export, upload, and delete are intentionally disabled.',
       supportTitle: 'Scope',
       supportBody: 'Supported: Office, PDF, text, code, markdown, images, and CSV. Unsupported: CAD, TIFF conversion, media transcoding, and file-management features.',
+      demosTitle: 'Demo Gallery',
+      demosBody: 'Each card points at a static sample file so you can click through every supported preview path quickly.',
+      demosRichLabel: 'Complex Office sample',
+      demosOpen: 'Open demo',
       sessionTitle: 'Preview Session',
       noSession: 'Enter a remote HTTP or HTTPS URL to generate a preview session.',
       unsupportedTitle: 'Unsupported',
@@ -51,6 +55,10 @@ const resources = {
       previewOnly: '本产品仅支持预览，明确禁用编辑、导出、上传和删除。',
       supportTitle: '范围说明',
       supportBody: '支持：Office、PDF、文本、代码、Markdown、图片与 CSV。不支持：CAD、TIFF 转换、媒体转码以及文件管理能力。',
+      demosTitle: '演示样例',
+      demosBody: '每张卡片都指向一个静态样例文件，方便你快速逐个验证当前支持的预览链路。',
+      demosRichLabel: '复杂 Office 样例',
+      demosOpen: '打开样例',
       sessionTitle: '预览会话',
       noSession: '请输入一个 HTTP 或 HTTPS 远程地址以创建预览会话。',
       unsupportedTitle: '不支持',
@@ -88,4 +96,3 @@ i18n.use(initReactI18next).init({
 })
 
 export default i18n
-

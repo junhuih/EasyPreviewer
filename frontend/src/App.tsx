@@ -7,6 +7,72 @@ const backendError = (fallback: string) => ({
   message: fallback,
 })
 
+const demoFiles = [
+  {
+    fileName: 'sample-complex.docx',
+    label: 'DOCX',
+    description: 'Structured office document with formatted text, table, and poster image.',
+    rich: true,
+  },
+  {
+    fileName: 'sample-complex.xlsx',
+    label: 'XLSX',
+    description: 'Multi-sheet workbook with fonts, formulas, chart, merged cells, and embedded image.',
+    rich: true,
+  },
+  {
+    fileName: 'sample-complex.pptx',
+    label: 'PPTX',
+    description: 'Multi-slide deck with bilingual text, image placement, table layout, and typography variety.',
+    rich: true,
+  },
+  {
+    fileName: 'sample.pdf',
+    label: 'PDF',
+    description: 'Direct PDF preview without conversion.',
+  },
+  {
+    fileName: 'sample-readme.md',
+    label: 'Markdown',
+    description: 'Markdown rendered safely in read-only mode.',
+  },
+  {
+    fileName: 'sample-notes.txt',
+    label: 'Text',
+    description: 'Simple text file rendered as read-only preview content.',
+  },
+  {
+    fileName: 'sample-code.ts',
+    label: 'Code',
+    description: 'TypeScript sample for syntax-highlighted code preview.',
+  },
+  {
+    fileName: 'sample-data.json',
+    label: 'JSON',
+    description: 'Structured JSON sample using the text/code preview path.',
+  },
+  {
+    fileName: 'sample-grid.csv',
+    label: 'CSV',
+    description: 'Comma-separated data sample in the supported read-only flow.',
+  },
+  {
+    fileName: 'preview-poster.png',
+    label: 'PNG',
+    description: 'Image sample used across the Office demo files as well.',
+  },
+  {
+    fileName: 'preview-poster.jpg',
+    label: 'JPG',
+    description: 'JPEG image sample for browser-native image preview.',
+  },
+  {
+    fileName: 'sample-badge.svg',
+    label: 'SVG',
+    description: 'Vector image sample for browser-native preview.',
+  },
+]
+
 function App() {
   const { t, i18n } = useTranslation()
   const [sourceUrl, setSourceUrl] = useState('')
@@ -22,8 +88,7 @@ function App() {
     return t('failedTitle')
   }, [session, t])
 
-  const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
+  const resolvePreview = async (nextSourceUrl: string) => {
     setLoading(true)
     setError(null)
     try {
@@ -33,7 +98,7 @@ function App() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          sourceUrl,
+          sourceUrl: nextSourceUrl,
           locale: i18n.language,
         }),
       })
@@ -48,6 +113,17 @@ function App() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    await resolvePreview(sourceUrl)
+  }
+
+  const openDemo = async (fileName: string) => {
+    const demoUrl = new URL(`/demo/files/${fileName}`, window.location.origin).toString()
+    setSourceUrl(demoUrl)
+    await resolvePreview(demoUrl)
   }
 
   return (
@@ -86,6 +162,31 @@ function App() {
           <div className="support-box">
             <h2>{t('supportTitle')}</h2>
             <p>{t('supportBody')}</p>
+          </div>
+          <div className="demo-box">
+            <div className="demo-box__header">
+              <div>
+                <h2>{t('demosTitle')}</h2>
+                <p>{t('demosBody')}</p>
+              </div>
+            </div>
+            <div className="demo-list">
+              {demoFiles.map((demo) => (
+                <button
+                  key={demo.fileName}
+                  className="demo-card"
+                  type="button"
+                  onClick={() => void openDemo(demo.fileName)}
+                >
+                  <div className="demo-card__top">
+                    <strong>{demo.label}</strong>
+                    {demo.rich ? <span className="demo-card__badge">{t('demosRichLabel')}</span> : null}
+                  </div>
+                  <p>{demo.description}</p>
+                  <span className="demo-card__action">{t('demosOpen')}</span>
+                </button>
+              ))}
+            </div>
           </div>
           {error ? <p className="error-banner">{error}</p> : null}
         </section>
@@ -136,4 +237,3 @@ function App() {
 }
 
 export default App
-

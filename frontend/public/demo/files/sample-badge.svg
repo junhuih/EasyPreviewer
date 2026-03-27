@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="220" viewBox="0 0 720 220">
+  <rect width="720" height="220" rx="24" fill="#0d223f"/>
+  <circle cx="108" cy="110" r="54" fill="#d27b32"/>
+  <text x="190" y="96" fill="#f8f1e7" font-size="42" font-family="Georgia">Preview-Only Demo</text>
+  <text x="192" y="146" fill="#bad8f6" font-size="24" font-family="Helvetica">zh / en · Apache-2.0 · LibreOffice</text>
+</svg>

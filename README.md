@@ -27,6 +27,21 @@ This repository now contains:
 
 ## Development
 
+### Demo Assets
+
+The clickable demo page uses generated samples under [frontend/public/demo/files](/Users/orbit-0427/Documents/EasyPreviewer/frontend/public/demo/files). To regenerate them:
+
+```bash
+python3 scripts/generate_demo_assets.py
+```
+
+The generated set includes:
+
+- a complex `docx`
+- a complex multi-sheet `xlsx`
+- a complex multi-slide `pptx`
+- `pdf`, `md`, `txt`, `ts`, `json`, `csv`, `png`, `jpg`, and `svg` samples
+
 ### Backend
 
 Requirements:
@@ -58,6 +73,31 @@ npm run dev
 
 The Vite development server proxies `/api` to the backend on port `8080`.
 
+### Single-Image Docker Build
+
+The repository includes a root [Dockerfile](/Users/orbit-0427/Documents/EasyPreviewer/Dockerfile) that:
+
+- builds the React frontend
+- copies the frontend build into the backend static resources during image build
+- packages the Spring Boot backend into a single runnable image
+
+Build:
+
+```bash
+docker build -t modern-preview-demo .
+```
+
+Run:
+
+```bash
+docker run --rm -p 8080:8080 -e OFFICE_HOME=/usr/lib/libreoffice modern-preview-demo
+```
+
+Notes:
+
+- Office preview still requires LibreOffice to be available inside the runtime environment or mounted/configured appropriately.
+- On this machine, Docker registry pulls were unstable and failed with remote `EOF` before the build could reach our code, but the Dockerfile itself has been updated to use registries reachable from the shell and to avoid shipping the reference repo in the build context.
+
 ## Documentation
 
 - English overview: [docs/en/overview.md](/Users/orbit-0427/Documents/EasyPreviewer/docs/en/overview.md)
@@ -66,4 +106,3 @@ The Vite development server proxies `/api` to the backend on port `8080`.
 - 架构说明: [docs/zh/architecture.md](/Users/orbit-0427/Documents/EasyPreviewer/docs/zh/architecture.md)
 - Support matrix: [docs/en/support-matrix.md](/Users/orbit-0427/Documents/EasyPreviewer/docs/en/support-matrix.md)
 - 支持矩阵: [docs/zh/support-matrix.md](/Users/orbit-0427/Documents/EasyPreviewer/docs/zh/support-matrix.md)
-

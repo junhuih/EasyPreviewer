@@ -124,6 +124,72 @@ h1 {
   border-top: 1px solid #e5edf5;
 }
 
+.demo-box {
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid #e5edf5;
+}
+
+.demo-box__header h2 {
+  margin: 0 0 6px;
+}
+
+.demo-box__header p {
+  margin: 0;
+  color: #5a6884;
+}
+
+.demo-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.demo-card {
+  text-align: left;
+  border: 1px solid #d8e3ef;
+  border-radius: 18px;
+  padding: 14px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(244, 248, 252, 0.92));
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.demo-card:hover {
+  transform: translateY(-2px);
+  border-color: #8bb8e8;
+  box-shadow: 0 14px 28px rgba(16, 33, 58, 0.08);
+}
+
+.demo-card__top {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.demo-card p {
+  margin: 10px 0 0;
+  color: #53627d;
+  font-size: 0.92rem;
+}
+
+.demo-card__badge {
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: #0d223f;
+  color: #fff;
+  font-size: 0.74rem;
+}
+
+.demo-card__action {
+  display: inline-block;
+  margin-top: 10px;
+  color: #28589f;
+  font-weight: 700;
+}
+
 .session-header {
   display: flex;
   justify-content: space-between;
