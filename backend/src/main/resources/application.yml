@@ -1,0 +1,25 @@
+spring:
+  application:
+    name: preview-backend
+  cache:
+    cache-names:
+      - previewSessions
+
+server:
+  port: 8080
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
+preview:
+  supported-locales:
+    - zh
+    - en
+  cache:
+    ttl-minutes: 30
+  office:
+    home: ${OFFICE_HOME:}
+
