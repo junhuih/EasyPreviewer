@@ -67,13 +67,18 @@ public class PreviewSessionService {
             try {
                 session.setStatus(PreviewStatus.PROCESSING);
                 var inputPath = remoteContentService.downloadToTempFile(request.sourceUrl(), fileName);
-                var outputPath = capability.previewMode() == PreviewMode.SPREADSHEET
-                        ? officeConversionService.convertToHtml(inputPath)
-                        : officeConversionService.convertToPdf(inputPath);
-                session.setContentPath(outputPath);
-                session.setContentType(capability.previewMode() == PreviewMode.SPREADSHEET
-                        ? "text/html; charset=UTF-8"
-                        : "application/pdf");
+                if (useBrowserSpreadsheetViewer(extension)) {
+                    session.setContentPath(inputPath);
+                    session.setContentType(resolveContentType(extension));
+                } else {
+                    var outputPath = capability.previewMode() == PreviewMode.SPREADSHEET
+                            ? officeConversionService.convertToHtml(inputPath)
+                            : officeConversionService.convertToPdf(inputPath);
+                    session.setContentPath(outputPath);
+                    session.setContentType(capability.previewMode() == PreviewMode.SPREADSHEET
+                            ? "text/html; charset=UTF-8"
+                            : "application/pdf");
+                }
                 session.setStatus(PreviewStatus.READY);
             } catch (Exception ex) {
                 session.setStatus(PreviewStatus.FAILED);
@@ -121,5 +126,9 @@ public class PreviewSessionService {
                     -> "text/plain; charset=UTF-8";
             default -> "application/octet-stream";
         };
+    }
+
+    public boolean useBrowserSpreadsheetViewer(String extension) {
+        return "xlsx".equals(extension) || "xlsm".equals(extension);
     }
 }

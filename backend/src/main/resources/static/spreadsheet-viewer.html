@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Spreadsheet Preview</title>
+    <title>EasyPreviewer Spreadsheet</title>
     <link rel="stylesheet" href="/xlsx/plugins/css/pluginsCss.css" />
     <link rel="stylesheet" href="/xlsx/plugins/plugins.css" />
     <link rel="stylesheet" href="/xlsx/css/luckysheet.css" />
@@ -14,8 +14,10 @@
         width: 100%;
         height: 100%;
         margin: 0;
-        background: #f6f8fb;
+        background: #f5f7fb;
         overflow: hidden;
+        overscroll-behavior: none;
+        font-family: "IBM Plex Sans", "Noto Sans SC", system-ui, sans-serif;
       }
 
       #loading {
@@ -24,7 +26,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        background: rgba(246, 248, 251, 0.92);
+        background: rgba(245, 247, 251, 0.94);
         color: #22324c;
         font: 600 16px/1.4 "IBM Plex Sans", "Noto Sans SC", system-ui, sans-serif;
         z-index: 20;
@@ -46,6 +48,65 @@
       #luckysheet {
         position: absolute;
         inset: 0;
+        overscroll-behavior: contain;
+      }
+
+      .luckysheet,
+      .luckysheet * {
+        font-family: "IBM Plex Sans", "Noto Sans SC", system-ui, sans-serif !important;
+      }
+
+      .luckysheetLoaderGif,
+      .luckysheet-loading-image .image-type {
+        background-image: none !important;
+      }
+
+      .luckysheet_info_detail,
+      .luckysheet-wa-calculate,
+      .luckysheet-toolbar-button-outer-box,
+      .luckysheet-cols-menu,
+      .luckysheet-rows-menu,
+      .luckysheet-sheets-add,
+      .luckysheet-sheets-m {
+        display: none !important;
+      }
+
+      #luckysheet-input-box,
+      #luckysheet-input-box-index,
+      #luckysheet-input-box-container,
+      #luckysheet-formula-functionrange-select,
+      #luckysheet-icon-morebtn,
+      #luckysheet-sheet-list,
+      #luckysheet-cols-h-c,
+      #luckysheet-rows-h,
+      #luckysheet-left-top {
+        display: none !important;
+      }
+
+      #luckysheet-cell-main,
+      #luckysheet-cell-flow,
+      #luckysheetTableContent {
+        top: 0 !important;
+        left: 0 !important;
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .luckysheet-sheet-area {
+        border-top: 1px solid rgba(18, 33, 58, 0.08);
+        background: linear-gradient(180deg, #eef4fb 0%, #e6edf7 100%);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+      }
+
+      .luckysheet-sheets-item {
+        padding: 0 14px !important;
+        border-radius: 12px 12px 0 0 !important;
+      }
+
+      .luckysheet-sheets-item-active {
+        background: #ffffff !important;
+        color: #132844 !important;
+        box-shadow: 0 -1px 0 rgba(255, 255, 255, 0.92), 0 12px 20px rgba(19, 40, 68, 0.08);
       }
     </style>
     <script src="/xlsx/plugins/js/plugin.js"></script>
@@ -63,10 +124,253 @@
       const loading = document.getElementById('loading')
       const error = document.getElementById('error')
 
+      function excelSerialToDate(value) {
+        const utcDays = Math.floor(value - 25569)
+        const utcValue = utcDays * 86400
+        const dateInfo = new Date(utcValue * 1000)
+        const fractionalDay = value - Math.floor(value) + 0.0000001
+        const totalSeconds = Math.floor(86400 * fractionalDay)
+        const seconds = totalSeconds % 60
+        const totalMinutes = Math.floor(totalSeconds / 60)
+        const minutes = totalMinutes % 60
+        const hours = Math.floor(totalMinutes / 60)
+
+        dateInfo.setUTCHours(hours)
+        dateInfo.setUTCMinutes(minutes)
+        dateInfo.setUTCSeconds(seconds)
+        dateInfo.setUTCMilliseconds(0)
+        return dateInfo
+      }
+
+      function formatExcelDate(value) {
+        const date = excelSerialToDate(value)
+        const year = date.getUTCFullYear()
+        const month = date.getUTCMonth() + 1
+        const day = date.getUTCDate()
+        return `${year}/${month}/${day}`
+      }
+
+      function normalizeDateColumns(exportJson) {
+        exportJson.sheets.forEach((sheet) => {
+          const headerByColumn = new Map()
+          const dateColumns = new Set()
+          const cells = []
+
+          if (Array.isArray(sheet.celldata)) {
+            sheet.celldata.forEach((entry) => {
+              if (entry && entry.v) {
+                cells.push({ row: entry.r, col: entry.c, cell: entry.v })
+              }
+            })
+          }
+
+          if (Array.isArray(sheet.data)) {
+            sheet.data.forEach((row, rowIndex) => {
+              if (!Array.isArray(row)) {
+                return
+              }
+              row.forEach((cell, colIndex) => {
+                if (cell) {
+                  cells.push({ row: rowIndex, col: colIndex, cell })
+                }
+              })
+            })
+          }
+
+          cells.forEach(({ row, col, cell }) => {
+            if (row !== 0) {
+              return
+            }
+            const text = String(cell.m ?? cell.v ?? '').trim().toLowerCase()
+            if (text) {
+              headerByColumn.set(col, text)
+            }
+          })
+
+          headerByColumn.forEach((text, col) => {
+            if (text.includes('date')) {
+              dateColumns.add(col)
+            }
+          })
+
+          cells.forEach(({ row, col, cell }) => {
+            if (row === 0 || !dateColumns.has(col)) {
+              return
+            }
+
+            const rawValue = typeof cell.v === 'number' ? cell.v : Number.NaN
+            if (!Number.isFinite(rawValue) || rawValue < 1 || rawValue > 90000) {
+              return
+            }
+
+            cell.ct = {
+              fa: 'yyyy/m/d',
+              t: 'n',
+            }
+            cell.m = formatExcelDate(rawValue)
+          })
+        })
+      }
+
+      function setupTrackpadScroll() {
+        const host = document.getElementById('luckysheet')
+        if (!host) {
+          return
+        }
+
+        host.addEventListener(
+          'wheel',
+          (event) => {
+            const cellMain = document.getElementById('luckysheet-cell-main')
+            if (!cellMain || !cellMain.contains(event.target)) {
+              return
+            }
+
+            event.preventDefault()
+            cellMain.scrollLeft += event.deltaX
+            cellMain.scrollTop += event.deltaY
+          },
+          { passive: false }
+        )
+      }
+
       function showError(message) {
         loading.style.display = 'none'
         error.style.display = 'flex'
         error.textContent = message
+      }
+
+      function buildWorkbook(exportJson) {
+        const workbookName =
+          exportJson.info && exportJson.info.name ? exportJson.info.name : 'EasyPreviewer Workbook'
+
+        normalizeDateColumns(exportJson)
+
+        window.luckysheet.create({
+          container: 'luckysheet',
+          lang: lang === 'zh' ? 'zh' : 'en',
+          data: exportJson.sheets,
+          title: workbookName,
+          userInfo: false,
+          allowCopy: true,
+          allowEdit: false,
+          showtoolbar: false,
+          showinfobar: false,
+          showsheetbar: true,
+          showstatisticBar: false,
+          showformulaBar: false,
+          sheetFormulaBar: false,
+          hideLineNumBar: true,
+          closeRightClick: true,
+          closeSheet: true,
+          hideAdd: true,
+          enableAddRow: false,
+          enableAddCol: false,
+          enableAddBackTop: false,
+          sheetBottomConfig: false,
+          forceCalculation: false,
+          enableContextMenu: false,
+          rowHeaderWidth: 0,
+          columnHeaderHeight: 0,
+          defaultColWidth: 88,
+          defaultRowHeight: 24,
+          zoomRatio: 1,
+          cellRightClickConfig: {
+            copy: false,
+            copyAs: false,
+            paste: false,
+            insertRow: false,
+            insertColumn: false,
+            deleteRow: false,
+            deleteColumn: false,
+            deleteCell: false,
+            hideRow: false,
+            hideColumn: false,
+            rowHeight: false,
+            columnWidth: false,
+            clear: false,
+            matrix: false,
+            sort: false,
+            filter: false,
+            chart: false,
+            image: false,
+            link: false,
+            data: false,
+            cellFormat: false,
+          },
+          showtoolbarConfig: {
+            undoRedo: false,
+            paintFormat: false,
+            currencyFormat: false,
+            percentageFormat: false,
+            numberDecrease: false,
+            numberIncrease: false,
+            moreFormats: false,
+            font: false,
+            fontSize: false,
+            bold: false,
+            italic: false,
+            strikethrough: false,
+            underline: false,
+            textColor: false,
+            fillColor: false,
+            border: false,
+            mergeCell: false,
+            horizontalAlignMode: false,
+            verticalAlignMode: false,
+            textWrapMode: false,
+            textRotateMode: false,
+            image: false,
+            link: false,
+            chart: false,
+            postil: false,
+            pivotTable: false,
+            function: false,
+            frozenMode: false,
+            sortAndFilter: false,
+            conditionalFormat: false,
+            dataVerification: false,
+            splitColumn: false,
+            screenshot: false,
+            findAndReplace: false,
+            protection: false,
+            print: false,
+            exportXlsx: false,
+          },
+          hook: {
+            workbookCreateAfter: polishViewerChrome,
+          },
+        })
+
+        polishViewerChrome()
+        setupTrackpadScroll()
+      }
+
+      function polishViewerChrome() {
+        const selectors = [
+          '.luckysheet_info_detail',
+          '.luckysheet-wa-calculate',
+          '.luckysheet-toolbar-button-outer-box',
+          '.luckysheet-cols-menu',
+          '.luckysheet-rows-menu',
+          '.luckysheet-sheets-add',
+          '.luckysheet-sheets-m',
+          '#luckysheet-input-box',
+          '#luckysheet-input-box-index',
+          '#luckysheet-input-box-container',
+          '#luckysheet-formula-functionrange-select',
+          '#luckysheet-icon-morebtn',
+          '#luckysheet-sheet-list',
+          '#luckysheet-cols-h-c',
+          '#luckysheet-rows-h',
+          '#luckysheet-left-top',
+        ]
+
+        selectors.forEach((selector) => {
+          document.querySelectorAll(selector).forEach((element) => {
+            element.style.display = 'none'
+          })
+        })
       }
 
       if (!file) {
@@ -82,93 +386,9 @@
           if (window.luckysheet && window.luckysheet.destroy) {
             window.luckysheet.destroy()
           }
-
-          window.luckysheet.create({
-            container: 'luckysheet',
-            lang: lang === 'zh' ? 'zh' : 'en',
-            data: exportJson.sheets,
-            title: exportJson.info && exportJson.info.name ? exportJson.info.name : 'Spreadsheet Preview',
-            allowCopy: true,
-            allowEdit: false,
-            showtoolbar: false,
-            showinfobar: false,
-            showsheetbar: true,
-            showstatisticBar: false,
-            showformulaBar: false,
-            sheetFormulaBar: false,
-            showRowBar: true,
-            showColumnBar: true,
-            enableAddRow: false,
-            enableAddCol: false,
-            enableAddBackTop: false,
-            sheetBottomConfig: false,
-            userInfo: false,
-            forceCalculation: false,
-            enableContextMenu: false,
-            rowHeaderWidth: 52,
-            cellRightClickConfig: {
-              copy: false,
-              copyAs: false,
-              paste: false,
-              insertRow: false,
-              insertColumn: false,
-              deleteRow: false,
-              deleteColumn: false,
-              deleteCell: false,
-              hideRow: false,
-              hideColumn: false,
-              rowHeight: false,
-              columnWidth: false,
-              clear: false,
-              matrix: false,
-              sort: false,
-              filter: false,
-              chart: false,
-              image: false,
-              link: false,
-              data: false,
-              cellFormat: false,
-            },
-            showtoolbarConfig: {
-              undoRedo: false,
-              paintFormat: false,
-              currencyFormat: false,
-              percentageFormat: false,
-              numberDecrease: false,
-              numberIncrease: false,
-              moreFormats: false,
-              font: false,
-              fontSize: false,
-              bold: false,
-              italic: false,
-              strikethrough: false,
-              underline: false,
-              textColor: false,
-              fillColor: false,
-              border: false,
-              mergeCell: false,
-              horizontalAlignMode: false,
-              verticalAlignMode: false,
-              textWrapMode: false,
-              textRotateMode: false,
-              image: false,
-              link: false,
-              chart: false,
-              postil: false,
-              pivotTable: false,
-              function: false,
-              frozenMode: false,
-              sortAndFilter: false,
-              conditionalFormat: false,
-              dataVerification: false,
-              splitColumn: false,
-              screenshot: false,
-              findAndReplace: false,
-              protection: false,
-              print: false,
-              exportXlsx: false,
-            },
-          })
+          buildWorkbook(exportJson)
+        }, undefined, function () {
+          showError('Unable to read spreadsheet content.')
         })
       }
     </script>

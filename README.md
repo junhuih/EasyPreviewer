@@ -80,7 +80,7 @@ npm run dev
 
 The Vite development server proxies `/api` to the backend on port `8080`.
 
-### Single-Container Docker Build
+### Docker
 
 The repository includes a root [Dockerfile](/Users/orbit-0427/Documents/EasyPreviewer/Dockerfile) that:
 
@@ -89,13 +89,36 @@ The repository includes a root [Dockerfile](/Users/orbit-0427/Documents/EasyPrev
 - packages the Spring Boot backend into a single runnable image
 - installs LibreOffice in the runtime image so Office preview works out of the box
 
-Build:
+Local refresh flow:
+
+```bash
+cd /Users/orbit-0427/Documents/EasyPreviewer/frontend
+npm install
+npm run build
+
+cd /Users/orbit-0427/Documents/EasyPreviewer
+rsync -a --delete frontend/dist/ backend/src/main/resources/static/
+
+cd /Users/orbit-0427/Documents/EasyPreviewer/backend
+mvn clean package
+
+cd /Users/orbit-0427/Documents/EasyPreviewer
+docker compose up --build -d
+```
+
+Open:
+
+```bash
+http://localhost:8080
+```
+
+Manual image build:
 
 ```bash
 docker build -t modern-preview-demo .
 ```
 
-Run:
+Manual container run:
 
 ```bash
 docker run --rm -p 8080:8080 modern-preview-demo
@@ -104,8 +127,9 @@ docker run --rm -p 8080:8080 modern-preview-demo
 Notes:
 
 - The container serves the frontend and backend together on port `8080`.
-- Spreadsheet files are converted to HTML through LibreOffice instead of being flattened into PDF.
-- `docker compose up --build -d` starts one named container, `modern-preview-only`, which is easy to find in Docker Desktop.
+- The current local compose service is named `modern-preview-only`.
+- `docker compose up --build -d` rebuilds the image and replaces the running container with the latest packaged app.
+- If the UI does not look updated, rebuild the frontend, resync `frontend/dist` into `backend/src/main/resources/static`, repackage the backend JAR, and rerun `docker compose up --build -d`.
 
 ## Documentation
 

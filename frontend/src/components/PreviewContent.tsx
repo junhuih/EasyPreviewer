@@ -10,6 +10,7 @@ import css from 'highlight.js/lib/languages/css'
 import python from 'highlight.js/lib/languages/python'
 import java from 'highlight.js/lib/languages/java'
 import type { PreviewSessionResponse } from '../types'
+import { PdfPreview } from './PdfPreview'
 
 hljs.registerLanguage('javascript', javascript)
 hljs.registerLanguage('json', json)
@@ -68,7 +69,7 @@ export function PreviewContent({ session, emptyText }: PreviewContentProps) {
   }
 
   if (session.previewMode === 'PDF') {
-    return <iframe className="viewer-frame" src={session.contentUrl} title={session.fileName} />
+    return <PdfPreview fileName={session.fileName} url={session.contentUrl} />
   }
 
   if (session.previewMode === 'IMAGE') {

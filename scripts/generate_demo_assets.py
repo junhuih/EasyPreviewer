@@ -59,7 +59,7 @@ def make_brand_image() -> Path:
 
 def make_docx(image_path: Path) -> None:
     doc = Document()
-    title = doc.add_heading("Modern Preview-Only File Viewer", level=0)
+    title = doc.add_heading("EasyPreviewer", level=0)
     title.alignment = 1
 
     intro = doc.add_paragraph()
@@ -69,7 +69,7 @@ def make_docx(image_path: Path) -> None:
     bullet_points = [
         "Bilingual documentation target: zh / en",
         "Preview-only policy: no edit, no export, no upload",
-        "Commercial-friendly license target: Apache-2.0",
+        "Brand target: EasyPreviewer",
     ]
     for item in bullet_points:
         doc.add_paragraph(item, style="List Bullet")
@@ -101,82 +101,93 @@ def make_docx(image_path: Path) -> None:
 
 def make_xlsx(image_path: Path) -> None:
     workbook = Workbook()
-    overview = workbook.active
-    overview.title = "Overview"
+    issues = workbook.active
+    issues.title = "Issue Log"
 
     header_fill = PatternFill("solid", fgColor="0D223F")
     header_font = Font(color="FFFFFF", bold=True, size=12)
     highlight_fill = PatternFill("solid", fgColor="F2D6BC")
     thin = Side(style="thin", color="D8D8D8")
 
-    overview.merge_cells("A1:F1")
-    overview["A1"] = "Modern Preview Demo Workbook"
-    overview["A1"].font = Font(size=18, bold=True, color="0D223F")
-    overview["A1"].alignment = Alignment(horizontal="center")
+    issues.merge_cells("A1:H1")
+    issues["A1"] = "EasyPreviewer Inspection Workbook"
+    issues["A1"].font = Font(size=18, bold=True, color="0D223F")
+    issues["A1"].alignment = Alignment(horizontal="center")
 
-    headers = ["Area", "Owner", "Target", "Actual", "Variance", "Status"]
-    overview.append(headers)
-    for cell in overview[2]:
+    issues["A2"] = "Part"
+    issues["B2"] = "Entry Date"
+    issues["C2"] = "Trial Date"
+    issues["D2"] = "Tool Status"
+    issues["E2"] = "Issue"
+    issues["F2"] = "Spec"
+    issues["G2"] = "Cavity"
+    issues["H2"] = "Images"
+
+    for cell in issues[2]:
         cell.fill = header_fill
         cell.font = header_font
         cell.alignment = Alignment(horizontal="center")
         cell.border = Border(left=thin, right=thin, top=thin, bottom=thin)
 
     data_rows = [
-        ["Office", "Platform", 92, 95, "=D3-C3", "Ahead"],
-        ["PDF", "Viewer", 88, 87, "=D4-C4", "Watch"],
-        ["Markdown", "Frontend", 80, 84, "=D5-C5", "Ahead"],
-        ["Images", "Frontend", 76, 79, "=D6-C6", "Ahead"],
-        ["Unsupported", "Policy", 100, 100, "=D7-C7", "Locked"],
+        ["Housing-A", "2026/02/03", "2026/02/05", "OK", "Rough Surface", "Visual", 1],
+        ["Housing-B", "2026/02/03", "2026/02/05", "OK", "Flow Line", "Visual", 2],
+        ["Housing-C", "2026/02/03", "2026/02/05", "Hold", "Deformation", "Dimensional", 1],
     ]
     for row in data_rows:
-        overview.append(row)
+        issues.append(row)
 
-    for row in overview.iter_rows(min_row=3, max_row=7, min_col=1, max_col=6):
+    for row in issues.iter_rows(min_row=3, max_row=5, min_col=1, max_col=8):
         for cell in row:
             cell.border = Border(left=thin, right=thin, top=thin, bottom=thin)
-        row[5].fill = highlight_fill
+            cell.alignment = Alignment(horizontal="center", vertical="center")
+        row[4].fill = highlight_fill
+        row[7].alignment = Alignment(horizontal="center", vertical="center")
+
+    issues.row_dimensions[3].height = 150
+    issues.row_dimensions[4].height = 150
+    issues.row_dimensions[5].height = 150
 
     chart = BarChart()
-    chart.title = "Target vs Actual"
-    chart.y_axis.title = "Score"
-    chart.x_axis.title = "Capability"
-    data = Reference(overview, min_col=3, max_col=4, min_row=2, max_row=7)
-    cats = Reference(overview, min_col=1, min_row=3, max_row=7)
+    chart.title = "Issue Count by Part"
+    chart.y_axis.title = "Count"
+    chart.x_axis.title = "Part"
+    summary_data = [
+        ("Housing-A", 1),
+        ("Housing-B", 1),
+        ("Housing-C", 1),
+    ]
+
+    summary = workbook.create_sheet("Summary")
+    summary["A1"] = "EasyPreviewer Summary"
+    summary["A1"].font = Font(size=18, bold=True, color="0D223F")
+    summary.append(["Part", "Issue Count"])
+    for row in summary_data:
+        summary.append(list(row))
+    for cell in summary[2]:
+        cell.fill = header_fill
+        cell.font = header_font
+
+    data = Reference(summary, min_col=2, max_col=2, min_row=2, max_row=5)
+    cats = Reference(summary, min_col=1, min_row=3, max_row=5)
     chart.add_data(data, titles_from_data=True)
     chart.set_categories(cats)
     chart.height = 6
     chart.width = 11
-    overview.add_chart(chart, "H2")
+    summary.add_chart(chart, "D2")
 
-    overview.add_image(XLImage(str(image_path)), "A10")
+    issues.add_image(XLImage(str(image_path)), "H3")
 
-    for column, width in {"A": 18, "B": 16, "C": 12, "D": 12, "E": 12, "F": 14}.items():
-        overview.column_dimensions[column].width = width
+    for column, width in {"A": 18, "B": 14, "C": 14, "D": 14, "E": 18, "F": 14, "G": 10, "H": 32}.items():
+        issues.column_dimensions[column].width = width
 
-    fonts_sheet = workbook.create_sheet("Fonts & Layout")
-    fonts_sheet["A1"] = "Serif sample"
-    fonts_sheet["A1"].font = Font(name="Times New Roman", size=16, bold=True)
-    fonts_sheet["A2"] = "Sans sample"
-    fonts_sheet["A2"].font = Font(name="Arial", size=16, italic=True, color="305D52")
-    fonts_sheet["A3"] = "Monospace sample"
-    fonts_sheet["A3"].font = Font(name="Courier New", size=14)
-    fonts_sheet["C1"] = "Wrapped bilingual note"
-    fonts_sheet["C2"] = "English: Preview only\n中文：仅支持预览"
-    fonts_sheet["C2"].alignment = Alignment(wrap_text=True)
-    fonts_sheet.row_dimensions[2].height = 40
-    fonts_sheet.add_image(XLImage(str(image_path)), "C4")
+    gallery = workbook.create_sheet("Photo Board")
+    gallery["A1"] = "EasyPreviewer Photo Board"
+    gallery["A1"].font = Font(size=18, bold=True, color="0D223F")
+    gallery["A3"] = "Reference image"
+    gallery.add_image(XLImage(str(image_path)), "A5")
 
-    metrics = workbook.create_sheet("Data Grid")
-    metrics.append(["Month", "Requests", "Success Rate"])
-    for month, requests, rate in [
-        ("Jan", 1230, 0.991),
-        ("Feb", 1520, 0.988),
-        ("Mar", 1810, 0.994),
-        ("Apr", 1760, 0.996),
-    ]:
-        metrics.append([month, requests, rate])
-    for cell in metrics[1]:
+    for cell in summary[2]:
         cell.fill = header_fill
         cell.font = header_font
 
@@ -189,7 +200,7 @@ def make_pptx(image_path: Path) -> None:
     prs.slide_height = PptInches(7.5)
 
     title_slide = prs.slides.add_slide(prs.slide_layouts[0])
-    title_slide.shapes.title.text = "Modern Preview-Only Demo Deck"
+    title_slide.shapes.title.text = "EasyPreviewer Demo Deck"
     title_slide.placeholders[1].text = "Complex PPTX sample with layout, images, tables, and bilingual content."
 
     agenda = prs.slides.add_slide(prs.slide_layouts[5])
@@ -279,6 +290,7 @@ def make_textual_assets() -> None:
         json.dumps(
             {
                 "product": "modern-preview-viewer",
+                "brand": "EasyPreviewer",
                 "previewOnly": True,
                 "locales": ["zh", "en"],
                 "unsupported": ["cad", "tiff-conversion", "media-transcoding"],

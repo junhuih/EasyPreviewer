@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Spreadsheet Preview</title>
+    <title>EasyPreviewer Spreadsheet</title>
     <link rel="stylesheet" href="/xlsx/plugins/css/pluginsCss.css" />
     <link rel="stylesheet" href="/xlsx/plugins/plugins.css" />
     <link rel="stylesheet" href="/xlsx/css/luckysheet.css" />
@@ -14,8 +14,10 @@
         width: 100%;
         height: 100%;
         margin: 0;
-        background: #f6f8fb;
+        background: #f5f7fb;
         overflow: hidden;
+        overscroll-behavior: none;
+        font-family: "IBM Plex Sans", "Noto Sans SC", system-ui, sans-serif;
       }
 
       #loading {
@@ -24,7 +26,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        background: rgba(246, 248, 251, 0.92);
+        background: rgba(245, 247, 251, 0.94);
         color: #22324c;
         font: 600 16px/1.4 "IBM Plex Sans", "Noto Sans SC", system-ui, sans-serif;
         z-index: 20;
@@ -43,9 +45,108 @@
         z-index: 30;
       }
 
+      #sheet-tabs {
+        position: absolute;
+        left: 18px;
+        right: 18px;
+        bottom: 14px;
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+        z-index: 40;
+        pointer-events: none;
+      }
+
       #luckysheet {
         position: absolute;
         inset: 0;
+        overscroll-behavior: contain;
+      }
+
+      .luckysheet,
+      .luckysheet * {
+        font-family: "IBM Plex Sans", "Noto Sans SC", system-ui, sans-serif !important;
+      }
+
+      .luckysheetLoaderGif,
+      .luckysheet-loading-image .image-type {
+        background-image: none !important;
+      }
+
+      .luckysheet_info_detail,
+      .luckysheet-wa-calculate,
+      .luckysheet-toolbar-button-outer-box,
+      .luckysheet-cols-menu,
+      .luckysheet-rows-menu,
+      .luckysheet-sheets-add,
+      .luckysheet-sheets-m,
+      #luckysheet-sheets-leftscroll,
+      #luckysheet-sheets-rightscroll {
+        display: none !important;
+      }
+
+      #luckysheet-input-box,
+      #luckysheet-input-box-index,
+      #luckysheet-input-box-container,
+      #luckysheet-formula-functionrange-select,
+      #luckysheet-icon-morebtn,
+      #luckysheet-sheet-list,
+      #luckysheet-cols-h-c,
+      #luckysheet-rows-h,
+      #luckysheet-left-top {
+        display: none !important;
+      }
+
+      #luckysheet-cell-main,
+      #luckysheet-cell-flow,
+      #luckysheetTableContent {
+        top: 0 !important;
+        left: 0 !important;
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .luckysheet-sheet-area {
+        min-height: 72px;
+        border-top: 1px solid rgba(18, 33, 58, 0.08);
+        background: linear-gradient(180deg, rgba(238, 244, 251, 0.2) 0%, rgba(230, 237, 247, 0.9) 100%);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+      }
+
+      .luckysheet-sheet-area .luckysheet-sheets-item,
+      .luckysheet-sheet-area .luckysheet-sheets-item-active {
+        opacity: 0 !important;
+        pointer-events: none !important;
+        width: 0 !important;
+        min-width: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+      }
+
+      .sheet-tab {
+        pointer-events: auto;
+        border: 1px solid rgba(18, 33, 58, 0.1);
+        border-bottom-color: rgba(18, 33, 58, 0.18);
+        border-radius: 10px 10px 0 0;
+        padding: 8px 14px 9px;
+        background: rgba(255, 255, 255, 0.72);
+        color: #61718a;
+        font: 500 14px/1 "IBM Plex Sans", "Noto Sans SC", system-ui, sans-serif;
+        cursor: pointer;
+        transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease;
+      }
+
+      .sheet-tab:hover {
+        background: rgba(255, 255, 255, 0.9);
+        color: #33445e;
+      }
+
+      .sheet-tab.is-active {
+        background: #ffffff;
+        color: #22324c;
+        border-color: rgba(18, 33, 58, 0.16);
       }
     </style>
     <script src="/xlsx/plugins/js/plugin.js"></script>
@@ -56,12 +157,80 @@
     <div id="loading">Loading spreadsheet preview...</div>
     <div id="error"></div>
     <div id="luckysheet"></div>
+    <div id="sheet-tabs"></div>
     <script>
       const params = new URLSearchParams(window.location.search)
       const file = params.get('file')
       const lang = params.get('lang') || 'en'
+      const sessionId = params.get('session')
       const loading = document.getElementById('loading')
       const error = document.getElementById('error')
+      const sheetTabs = document.getElementById('sheet-tabs')
+
+      async function fetchDisplayOverrides() {
+        if (!sessionId) {
+          return null
+        }
+
+        const response = await fetch(`/api/previews/${sessionId}/spreadsheet-display`)
+        if (!response.ok) {
+          return null
+        }
+
+        return response.json()
+      }
+
+      function applyDisplayOverrides(exportJson, overrides) {
+        if (!overrides || !Array.isArray(overrides.sheets)) {
+          return
+        }
+
+        const overrideMap = new Map(
+          overrides.sheets.map((sheet) => [
+            sheet.name,
+            new Map(sheet.cells.map((cell) => [`${cell.row}:${cell.col}`, cell.display])),
+          ])
+        )
+
+        exportJson.sheets.forEach((sheet) => {
+          const sheetOverrides = overrideMap.get(sheet.name)
+          if (!sheetOverrides) {
+            return
+          }
+
+          const patchCell = (row, col, cell) => {
+            const display = sheetOverrides.get(`${row}:${col}`)
+            if (!display || !cell) {
+              return
+            }
+            cell.v = display
+            cell.m = display
+            cell.ct = {
+              fa: '@',
+              t: 's',
+            }
+          }
+
+          if (Array.isArray(sheet.celldata)) {
+            sheet.celldata.forEach((entry) => {
+              if (entry && entry.v) {
+                patchCell(entry.r, entry.c, entry.v)
+              }
+            })
+          }
+
+          if (Array.isArray(sheet.data)) {
+            sheet.data.forEach((row, rowIndex) => {
+              if (!Array.isArray(row)) {
+                return
+              }
+              row.forEach((cell, colIndex) => {
+                patchCell(rowIndex, colIndex, cell)
+              })
+            })
+          }
+        })
+      }
 
       function showError(message) {
         loading.style.display = 'none'
@@ -69,107 +238,206 @@
         error.textContent = message
       }
 
+      function renderSheetTabs(sheets) {
+        if (!sheetTabs) {
+          return
+        }
+
+        sheetTabs.innerHTML = ''
+        const nativeTabs = () => Array.from(document.querySelectorAll('.luckysheet-sheets-item'))
+        const initialActiveIndex = Math.max(
+          0,
+          sheets.findIndex((sheet) => sheet.status === 1 || sheet.status === '1')
+        )
+
+        const setActive = (activeIndex) => {
+          Array.from(sheetTabs.querySelectorAll('.sheet-tab')).forEach((button, index) => {
+            button.classList.toggle('is-active', index === activeIndex)
+          })
+        }
+
+        sheets.forEach((sheet, index) => {
+          const button = document.createElement('button')
+          button.type = 'button'
+          button.className = `sheet-tab${index === initialActiveIndex ? ' is-active' : ''}`
+          button.textContent = sheet.name || `Sheet ${index + 1}`
+          button.addEventListener('click', () => {
+            const currentNativeTabs = nativeTabs()
+            if (currentNativeTabs[index]) {
+              currentNativeTabs[index].click()
+            }
+            setActive(index)
+          })
+          sheetTabs.appendChild(button)
+        })
+      }
+
+      function buildWorkbook(exportJson, overrides) {
+        const workbookName =
+          exportJson.info && exportJson.info.name ? exportJson.info.name : 'EasyPreviewer Workbook'
+
+        applyDisplayOverrides(exportJson, overrides)
+
+        window.luckysheet.create({
+          container: 'luckysheet',
+          lang: lang === 'zh' ? 'zh' : 'en',
+          data: exportJson.sheets,
+          title: workbookName,
+          userInfo: false,
+          allowCopy: true,
+          allowEdit: false,
+          showtoolbar: false,
+          showinfobar: false,
+          showsheetbar: true,
+          showstatisticBar: false,
+          showformulaBar: false,
+          sheetFormulaBar: false,
+          hideLineNumBar: true,
+          closeRightClick: true,
+          closeSheet: true,
+          hideAdd: true,
+          enableAddRow: false,
+          enableAddCol: false,
+          enableAddBackTop: false,
+          sheetBottomConfig: false,
+          forceCalculation: false,
+          enableContextMenu: false,
+          rowHeaderWidth: 0,
+          columnHeaderHeight: 0,
+          defaultColWidth: 88,
+          defaultRowHeight: 24,
+          zoomRatio: 1,
+          cellRightClickConfig: {
+            copy: false,
+            copyAs: false,
+            paste: false,
+            insertRow: false,
+            insertColumn: false,
+            deleteRow: false,
+            deleteColumn: false,
+            deleteCell: false,
+            hideRow: false,
+            hideColumn: false,
+            rowHeight: false,
+            columnWidth: false,
+            clear: false,
+            matrix: false,
+            sort: false,
+            filter: false,
+            chart: false,
+            image: false,
+            link: false,
+            data: false,
+            cellFormat: false,
+          },
+          showtoolbarConfig: {
+            undoRedo: false,
+            paintFormat: false,
+            currencyFormat: false,
+            percentageFormat: false,
+            numberDecrease: false,
+            numberIncrease: false,
+            moreFormats: false,
+            font: false,
+            fontSize: false,
+            bold: false,
+            italic: false,
+            strikethrough: false,
+            underline: false,
+            textColor: false,
+            fillColor: false,
+            border: false,
+            mergeCell: false,
+            horizontalAlignMode: false,
+            verticalAlignMode: false,
+            textWrapMode: false,
+            textRotateMode: false,
+            image: false,
+            link: false,
+            chart: false,
+            postil: false,
+            pivotTable: false,
+            function: false,
+            frozenMode: false,
+            sortAndFilter: false,
+            conditionalFormat: false,
+            dataVerification: false,
+            splitColumn: false,
+            screenshot: false,
+            findAndReplace: false,
+            protection: false,
+            print: false,
+            exportXlsx: false,
+          },
+          hook: {
+            workbookCreateAfter: polishViewerChrome,
+          },
+        })
+
+        polishViewerChrome()
+        renderSheetTabs(exportJson.sheets)
+      }
+
+      function polishViewerChrome() {
+        const selectors = [
+          '.luckysheet_info_detail',
+          '.luckysheet-wa-calculate',
+          '.luckysheet-toolbar-button-outer-box',
+          '.luckysheet-cols-menu',
+          '.luckysheet-rows-menu',
+          '.luckysheet-sheets-add',
+          '.luckysheet-sheets-m',
+          '#luckysheet-input-box',
+          '#luckysheet-input-box-index',
+          '#luckysheet-input-box-container',
+          '#luckysheet-formula-functionrange-select',
+          '#luckysheet-icon-morebtn',
+          '#luckysheet-sheet-list',
+          '#luckysheet-cols-h-c',
+          '#luckysheet-rows-h',
+          '#luckysheet-left-top',
+        ]
+
+        selectors.forEach((selector) => {
+          document.querySelectorAll(selector).forEach((element) => {
+            element.style.display = 'none'
+          })
+        })
+      }
+
       if (!file) {
         showError('Missing spreadsheet file URL.')
       } else {
-        LuckyExcel.transformExcelToLuckyByUrl(file, 'spreadsheet.xlsx', function (exportJson) {
-          if (!exportJson.sheets || exportJson.sheets.length === 0) {
-            showError('Unable to read spreadsheet content.')
-            return
-          }
-
-          loading.style.display = 'none'
-          if (window.luckysheet && window.luckysheet.destroy) {
-            window.luckysheet.destroy()
-          }
-
-          window.luckysheet.create({
-            container: 'luckysheet',
-            lang: lang === 'zh' ? 'zh' : 'en',
-            data: exportJson.sheets,
-            title: exportJson.info && exportJson.info.name ? exportJson.info.name : 'Spreadsheet Preview',
-            allowCopy: true,
-            allowEdit: false,
-            showtoolbar: false,
-            showinfobar: false,
-            showsheetbar: true,
-            showstatisticBar: false,
-            showformulaBar: false,
-            sheetFormulaBar: false,
-            showRowBar: true,
-            showColumnBar: true,
-            enableAddRow: false,
-            enableAddCol: false,
-            enableAddBackTop: false,
-            sheetBottomConfig: false,
-            userInfo: false,
-            forceCalculation: false,
-            enableContextMenu: false,
-            rowHeaderWidth: 52,
-            cellRightClickConfig: {
-              copy: false,
-              copyAs: false,
-              paste: false,
-              insertRow: false,
-              insertColumn: false,
-              deleteRow: false,
-              deleteColumn: false,
-              deleteCell: false,
-              hideRow: false,
-              hideColumn: false,
-              rowHeight: false,
-              columnWidth: false,
-              clear: false,
-              matrix: false,
-              sort: false,
-              filter: false,
-              chart: false,
-              image: false,
-              link: false,
-              data: false,
-              cellFormat: false,
-            },
-            showtoolbarConfig: {
-              undoRedo: false,
-              paintFormat: false,
-              currencyFormat: false,
-              percentageFormat: false,
-              numberDecrease: false,
-              numberIncrease: false,
-              moreFormats: false,
-              font: false,
-              fontSize: false,
-              bold: false,
-              italic: false,
-              strikethrough: false,
-              underline: false,
-              textColor: false,
-              fillColor: false,
-              border: false,
-              mergeCell: false,
-              horizontalAlignMode: false,
-              verticalAlignMode: false,
-              textWrapMode: false,
-              textRotateMode: false,
-              image: false,
-              link: false,
-              chart: false,
-              postil: false,
-              pivotTable: false,
-              function: false,
-              frozenMode: false,
-              sortAndFilter: false,
-              conditionalFormat: false,
-              dataVerification: false,
-              splitColumn: false,
-              screenshot: false,
-              findAndReplace: false,
-              protection: false,
-              print: false,
-              exportXlsx: false,
-            },
+        Promise.all([
+          fetchDisplayOverrides(),
+          new Promise((resolve, reject) => {
+            LuckyExcel.transformExcelToLuckyByUrl(
+              file,
+              'spreadsheet.xlsx',
+              function (exportJson) {
+                if (!exportJson.sheets || exportJson.sheets.length === 0) {
+                  reject(new Error('Unable to read spreadsheet content.'))
+                  return
+                }
+                resolve(exportJson)
+              },
+              undefined,
+              function () {
+                reject(new Error('Unable to read spreadsheet content.'))
+              }
+            )
+          }),
+        ])
+          .then(([overrides, exportJson]) => {
+            loading.style.display = 'none'
+            if (window.luckysheet && window.luckysheet.destroy) {
+              window.luckysheet.destroy()
+            }
+            buildWorkbook(exportJson, overrides)
           })
-        })
+          .catch(() => {
+            showError('Unable to read spreadsheet content.')
+          })
       }
     </script>
   </body>

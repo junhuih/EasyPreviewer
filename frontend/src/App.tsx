@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { PreviewSessionResponse } from './types'
 import { PreviewContent } from './components/PreviewContent'
@@ -78,6 +78,7 @@ function App() {
   const [loading, setLoading] = useState(false)
   const [session, setSession] = useState<PreviewSessionResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [selectedFileName, setSelectedFileName] = useState(demoFiles[0]?.fileName ?? '')
 
   const statusTitle = useMemo(() => {
     if (!session) return t('sessionTitle')
@@ -119,15 +120,20 @@ function App() {
     await resolvePreview(demoUrl)
   }
 
+  useEffect(() => {
+    if (!selectedFileName || session || loading) {
+      return
+    }
+    void openDemo(selectedFileName)
+  }, [selectedFileName])
+
   return (
     <div className="app-shell">
       <header className="hero">
-        <div>
-          <p className="eyebrow">Apache-2.0 · LibreOffice · Preview Only</p>
-          <h1>{t('title')}</h1>
-          <p className="subtitle">{t('subtitle')}</p>
-        </div>
-        <label className="locale-picker">
+          <div className="hero__copy">
+            <h1>{t('title')}</h1>
+          </div>
+        <label className="locale-picker locale-picker--compact">
           <span>{t('language')}</span>
           <select value={i18n.language} onChange={(event) => void i18n.changeLanguage(event.target.value)}>
             <option value="zh">{t('localeZh')}</option>
@@ -137,82 +143,39 @@ function App() {
       </header>
 
       <main className="content-grid">
-        <section className="panel">
-          <p className="notice">{t('previewOnly')}</p>
-          <div className="support-box">
-            <h2>{t('supportTitle')}</h2>
-            <p>{t('supportBody')}</p>
+        <section className="panel panel--controls">
+          <div className="file-list">
+            {demoFiles.map((demo) => (
+              <button
+                key={demo.fileName}
+                className={`file-list__item ${selectedFileName === demo.fileName ? 'is-active' : ''}`}
+                type="button"
+                disabled={loading && selectedFileName === demo.fileName}
+                onClick={() => {
+                  setSelectedFileName(demo.fileName)
+                  void openDemo(demo.fileName)
+                }}
+              >
+                <span>{demo.label}</span>
+              </button>
+            ))}
           </div>
-          <div className="demo-box">
-            <div className="demo-box__header">
-              <div>
-                <h2>{t('demosTitle')}</h2>
-                <p>{t('demosBody')}</p>
-              </div>
-            </div>
-            <div className="demo-list">
-              {demoFiles.map((demo) => (
-                <button
-                  key={demo.fileName}
-                  className="demo-card"
-                  type="button"
-                  disabled={loading}
-                  onClick={() => void openDemo(demo.fileName)}
-                >
-                  <div className="demo-card__top">
-                    <strong>{demo.label}</strong>
-                    {demo.rich ? <span className="demo-card__badge">{t('demosRichLabel')}</span> : null}
-                  </div>
-                  <p>{demo.description}</p>
-                  <span className="demo-card__action">{t('demosOpen')}</span>
-                </button>
-              ))}
-            </div>
-          </div>
+
           {error ? <p className="error-banner">{error}</p> : null}
         </section>
 
-        <section className="panel">
-          <div className="session-header">
-            <h2>{statusTitle}</h2>
-            <span className={`status-pill ${session?.status?.toLowerCase() ?? 'idle'}`}>
-              {session ? t(`status${session.status.charAt(0)}${session.status.slice(1).toLowerCase()}`) : t('sessionTitle')}
-            </span>
-          </div>
-
+        <section className="panel panel--preview">
           {session ? (
             <>
-              <dl className="session-meta">
-                <div>
-                  <dt>{t('fileLabel')}</dt>
-                  <dd>{session.fileName}</dd>
-                </div>
-                <div>
-                  <dt>{t('modeLabel')}</dt>
-                  <dd>{t(`capability${session.previewMode.charAt(0)}${session.previewMode.slice(1).toLowerCase()}`)}</dd>
-                </div>
-                <div>
-                  <dt>{t('localeLabel')}</dt>
-                  <dd>{session.locale}</dd>
-                </div>
-                <div>
-                  <dt>{t('messageLabel')}</dt>
-                  <dd>{session.message}</dd>
-                </div>
-              </dl>
-
               <div className="preview-frame">
-                <h3>{t('contentTitle')}</h3>
                 <PreviewContent session={session} emptyText={t('contentUnavailable')} />
               </div>
             </>
           ) : (
-            <p className="empty-state">{t('noSession')}</p>
+            <p className="empty-state">{loading ? t('loadingAction') : statusTitle}</p>
           )}
         </section>
       </main>
-
-      <footer className="footer">{t('footer')}</footer>
     </div>
   )
 }

@@ -4,11 +4,13 @@ import com.example.preview.model.PreviewSession;
 import com.example.preview.model.PreviewStatus;
 import com.example.preview.service.PreviewSessionService;
 import com.example.preview.service.RemoteContentService;
+import com.example.preview.service.SpreadsheetDisplayService;
 import jakarta.validation.Valid;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.util.UriUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -32,10 +34,16 @@ public class PreviewController {
 
     private final PreviewSessionService previewSessionService;
     private final RemoteContentService remoteContentService;
+    private final SpreadsheetDisplayService spreadsheetDisplayService;
 
-    public PreviewController(PreviewSessionService previewSessionService, RemoteContentService remoteContentService) {
+    public PreviewController(
+            PreviewSessionService previewSessionService,
+            RemoteContentService remoteContentService,
+            SpreadsheetDisplayService spreadsheetDisplayService
+    ) {
         this.previewSessionService = previewSessionService;
         this.remoteContentService = remoteContentService;
+        this.spreadsheetDisplayService = spreadsheetDisplayService;
     }
 
     @PostMapping("/resolve")
@@ -105,7 +113,24 @@ public class PreviewController {
                 .body(new InputStreamResource(Files.newInputStream(assetPath)));
     }
 
+    @GetMapping("/{id}/spreadsheet-display")
+    public SpreadsheetDisplayService.SpreadsheetDisplayResponse spreadsheetDisplay(@PathVariable String id) throws Exception {
+        PreviewSession session = previewSessionService.getRequired(id);
+        if (session.getContentPath() == null || session.getStatus() != PreviewStatus.READY) {
+            throw new IllegalArgumentException("Preview session not found");
+        }
+        return spreadsheetDisplayService.extractDisplayValues(session.getContentPath(), session.getLocale());
+    }
+
     private PreviewSessionResponse toResponse(PreviewSession session) {
+        String contentUrl = "/api/previews/" + session.getId() + "/content";
+        if (session.getCapability().previewMode() == com.example.preview.model.PreviewMode.SPREADSHEET
+                && previewSessionService.useBrowserSpreadsheetViewer(session.getExtension())) {
+            String fileUrl = UriUtils.encodePath(contentUrl, StandardCharsets.UTF_8);
+            String locale = UriUtils.encodeQueryParam(session.getLocale(), StandardCharsets.UTF_8);
+            String sessionId = UriUtils.encodeQueryParam(session.getId(), StandardCharsets.UTF_8);
+            contentUrl = "/spreadsheet-viewer.html?file=" + fileUrl + "&lang=" + locale + "&session=" + sessionId;
+        }
         return new PreviewSessionResponse(
                 session.getId(),
                 session.getFileName(),
@@ -116,7 +141,7 @@ public class PreviewController {
                 session.getCapability().supported(),
                 session.getCapability().conversionRequired(),
                 previewSessionService.resolveMessage(session),
-                "/api/previews/" + session.getId() + "/content"
+                contentUrl
         );
     }
 
