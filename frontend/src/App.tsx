@@ -75,7 +75,6 @@ const demoFiles = [
 
 function App() {
   const { t, i18n } = useTranslation()
-  const [sourceUrl, setSourceUrl] = useState('')
   const [loading, setLoading] = useState(false)
   const [session, setSession] = useState<PreviewSessionResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -115,14 +114,8 @@ function App() {
     }
   }
 
-  const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    await resolvePreview(sourceUrl)
-  }
-
   const openDemo = async (fileName: string) => {
     const demoUrl = new URL(`/demo/files/${fileName}`, window.location.origin).toString()
-    setSourceUrl(demoUrl)
     await resolvePreview(demoUrl)
   }
 
@@ -145,19 +138,6 @@ function App() {
 
       <main className="content-grid">
         <section className="panel">
-          <form onSubmit={onSubmit} className="resolve-form">
-            <label htmlFor="sourceUrl">{t('sourceUrl')}</label>
-            <input
-              id="sourceUrl"
-              name="sourceUrl"
-              type="url"
-              placeholder="https://example.com/sample.docx"
-              value={sourceUrl}
-              onChange={(event) => setSourceUrl(event.target.value)}
-              required
-            />
-            <button disabled={loading}>{loading ? `${t('processingTitle')}...` : t('resolve')}</button>
-          </form>
           <p className="notice">{t('previewOnly')}</p>
           <div className="support-box">
             <h2>{t('supportTitle')}</h2>
@@ -176,6 +156,7 @@ function App() {
                   key={demo.fileName}
                   className="demo-card"
                   type="button"
+                  disabled={loading}
                   onClick={() => void openDemo(demo.fileName)}
                 >
                   <div className="demo-card__top">

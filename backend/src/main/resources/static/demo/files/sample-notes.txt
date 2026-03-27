@@ -1,0 +1,5 @@
+Preview-only checklist
+1. No edit
+2. No export
+3. No upload
+4. zh / en only

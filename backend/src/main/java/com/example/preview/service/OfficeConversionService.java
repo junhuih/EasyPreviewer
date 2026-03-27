@@ -19,13 +19,21 @@ public class OfficeConversionService {
     }
 
     public Path convertToPdf(Path inputFile) throws Exception {
+        return convert(inputFile, "pdf");
+    }
+
+    public Path convertToHtml(Path inputFile) throws Exception {
+        return convert(inputFile, "html");
+    }
+
+    private Path convert(Path inputFile, String targetExtension) throws Exception {
         File officeHome = null;
         String configuredHome = previewProperties.getOffice().getHome();
         if (configuredHome != null && !configuredHome.isBlank()) {
             officeHome = Path.of(configuredHome).toFile();
         }
 
-        Path outputFile = Files.createTempFile("preview-office-", ".pdf");
+        Path outputFile = Files.createTempFile("preview-office-", "." + targetExtension);
         LocalOfficeManager officeManager = LocalOfficeManager.builder()
                 .officeHome(officeHome)
                 .install()
@@ -43,4 +51,3 @@ public class OfficeConversionService {
         }
     }
 }
-

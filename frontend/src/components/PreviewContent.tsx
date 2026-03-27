@@ -79,6 +79,10 @@ export function PreviewContent({ session, emptyText }: PreviewContentProps) {
     return <p className="error-banner">{textError}</p>
   }
 
+  if (session.previewMode === 'SPREADSHEET') {
+    return <iframe className="viewer-frame spreadsheet-frame" src={session.contentUrl} title={session.fileName} />
+  }
+
   if (session.previewMode === 'MARKDOWN') {
     return (
       <article className="markdown-body">
@@ -99,4 +103,3 @@ export function PreviewContent({ session, emptyText }: PreviewContentProps) {
 
   return <p className="empty-state">{emptyText}</p>
 }
-

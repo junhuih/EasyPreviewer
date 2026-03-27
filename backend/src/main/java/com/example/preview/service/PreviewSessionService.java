@@ -2,6 +2,7 @@ package com.example.preview.service;
 
 import com.example.preview.api.CreatePreviewRequest;
 import com.example.preview.model.PreviewCapability;
+import com.example.preview.model.PreviewMode;
 import com.example.preview.model.PreviewSession;
 import com.example.preview.model.PreviewStatus;
 import org.springframework.cache.Cache;
@@ -66,9 +67,13 @@ public class PreviewSessionService {
             try {
                 session.setStatus(PreviewStatus.PROCESSING);
                 var inputPath = remoteContentService.downloadToTempFile(request.sourceUrl(), fileName);
-                var outputPath = officeConversionService.convertToPdf(inputPath);
+                var outputPath = capability.previewMode() == PreviewMode.SPREADSHEET
+                        ? officeConversionService.convertToHtml(inputPath)
+                        : officeConversionService.convertToPdf(inputPath);
                 session.setContentPath(outputPath);
-                session.setContentType("application/pdf");
+                session.setContentType(capability.previewMode() == PreviewMode.SPREADSHEET
+                        ? "text/html; charset=UTF-8"
+                        : "application/pdf");
                 session.setStatus(PreviewStatus.READY);
             } catch (Exception ex) {
                 session.setStatus(PreviewStatus.FAILED);
@@ -103,6 +108,10 @@ public class PreviewSessionService {
     private String resolveContentType(String extension) {
         return switch (extension) {
             case "pdf" -> "application/pdf";
+            case "xlsx" -> "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+            case "xls" -> "application/vnd.ms-excel";
+            case "xlsm" -> "application/vnd.ms-excel.sheet.macroEnabled.12";
+            case "ods" -> "application/vnd.oasis.opendocument.spreadsheet";
             case "png" -> "image/png";
             case "jpg", "jpeg" -> "image/jpeg";
             case "gif" -> "image/gif";
@@ -114,4 +123,3 @@ public class PreviewSessionService {
         };
     }
 }
-

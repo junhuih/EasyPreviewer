@@ -11,7 +11,10 @@ import java.util.Set;
 public class PreviewCapabilityRegistry {
 
     private static final Set<String> OFFICE_EXTENSIONS = Set.of(
-            "doc", "docx", "xls", "xlsx", "ppt", "pptx", "odt", "ods", "odp", "wps"
+            "doc", "docx", "ppt", "pptx", "odt", "odp", "wps"
+    );
+    private static final Set<String> SPREADSHEET_EXTENSIONS = Set.of(
+            "xls", "xlsx", "xlsm", "xlt", "xltm", "ods", "csv"
     );
     private static final Set<String> IMAGE_EXTENSIONS = Set.of(
             "png", "jpg", "jpeg", "gif", "webp", "svg"
@@ -35,6 +38,9 @@ public class PreviewCapabilityRegistry {
         if (OFFICE_EXTENSIONS.contains(extension)) {
             return new PreviewCapability(true, PreviewMode.PDF, true, "preview.ready");
         }
+        if (SPREADSHEET_EXTENSIONS.contains(extension)) {
+            return new PreviewCapability(true, PreviewMode.SPREADSHEET, true, "preview.ready");
+        }
         if (IMAGE_EXTENSIONS.contains(extension)) {
             return new PreviewCapability(true, PreviewMode.IMAGE, false, "preview.ready");
         }
@@ -56,4 +62,3 @@ public class PreviewCapabilityRegistry {
         return new PreviewCapability(false, PreviewMode.UNSUPPORTED, false, "preview.unsupported.general");
     }
 }
-

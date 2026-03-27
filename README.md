@@ -1,6 +1,6 @@
 # Modern Preview-Only File Viewer
 
-A clean-room, preview-only file viewer, built for commercial-friendly open source adoption under Apache-2.0.
+A preview-only file viewer, released under Apache-2.0 with additional third-party components kept under their own licenses.
 
 ## Goals
 
@@ -14,8 +14,8 @@ A clean-room, preview-only file viewer, built for commercial-friendly open sourc
 
 - Backend: Java 21, Spring Boot 3, JODConverter, Caffeine
 - Frontend: React, TypeScript, Vite, i18next
-- Preview engines: PDF.js-compatible embedding, read-only markdown/text/image rendering
-- Deployment: Docker-ready, with external LibreOffice preferred in production
+- Preview engines: LibreOffice conversion, PDF embedding, markdown/text/image rendering, and a vendored spreadsheet viewer stack for `.xlsx` preview
+- Deployment: single-container Docker image with LibreOffice bundled for easy distribution
 
 ## Current Status
 
@@ -24,6 +24,13 @@ This repository now contains:
 - a new backend scaffold under [backend](/Users/orbit-0427/Documents/EasyPreviewer/backend)
 - a new frontend scaffold under [frontend](/Users/orbit-0427/Documents/EasyPreviewer/frontend)
 - bilingual docs under [docs/en](/Users/orbit-0427/Documents/EasyPreviewer/docs/en) and [docs/zh](/Users/orbit-0427/Documents/EasyPreviewer/docs/zh)
+- a vendored spreadsheet preview bundle under [frontend/public/xlsx](/Users/orbit-0427/Documents/EasyPreviewer/frontend/public/xlsx) and [backend/src/main/resources/static/xlsx](/Users/orbit-0427/Documents/EasyPreviewer/backend/src/main/resources/static/xlsx)
+
+## Licensing Notes
+
+- The outbound license for this repository is Apache-2.0.
+- Some shipped runtime assets are third-party works distributed under their own licenses.
+- See [THIRD_PARTY_NOTICES.md](/Users/orbit-0427/Documents/EasyPreviewer/THIRD_PARTY_NOTICES.md) for bundled spreadsheet viewer notices and attribution notes.
 
 ## Development
 
@@ -73,13 +80,14 @@ npm run dev
 
 The Vite development server proxies `/api` to the backend on port `8080`.
 
-### Single-Image Docker Build
+### Single-Container Docker Build
 
 The repository includes a root [Dockerfile](/Users/orbit-0427/Documents/EasyPreviewer/Dockerfile) that:
 
 - builds the React frontend
 - copies the frontend build into the backend static resources during image build
 - packages the Spring Boot backend into a single runnable image
+- installs LibreOffice in the runtime image so Office preview works out of the box
 
 Build:
 
@@ -90,13 +98,14 @@ docker build -t modern-preview-demo .
 Run:
 
 ```bash
-docker run --rm -p 8080:8080 -e OFFICE_HOME=/usr/lib/libreoffice modern-preview-demo
+docker run --rm -p 8080:8080 modern-preview-demo
 ```
 
 Notes:
 
-- Office preview still requires LibreOffice to be available inside the runtime environment or mounted/configured appropriately.
-- On this machine, Docker registry pulls were unstable and failed with remote `EOF` before the build could reach our code, but the Dockerfile itself has been updated to use registries reachable from the shell and to avoid shipping the reference repo in the build context.
+- The container serves the frontend and backend together on port `8080`.
+- Spreadsheet files are converted to HTML through LibreOffice instead of being flattened into PDF.
+- `docker compose up --build -d` starts one named container, `modern-preview-only`, which is easy to find in Docker Desktop.
 
 ## Documentation
 

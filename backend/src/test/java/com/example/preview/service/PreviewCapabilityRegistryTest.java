@@ -20,6 +20,14 @@ class PreviewCapabilityRegistryTest {
     }
 
     @Test
+    void shouldSupportSpreadsheetFilesWithConversion() {
+        var capability = registry.resolve("xlsx");
+        assertTrue(capability.supported());
+        assertTrue(capability.conversionRequired());
+        assertEquals(PreviewMode.SPREADSHEET, capability.previewMode());
+    }
+
+    @Test
     void shouldMarkCadAsUnsupported() {
         var capability = registry.resolve("dwg");
         assertFalse(capability.supported());

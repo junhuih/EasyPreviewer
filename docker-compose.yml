@@ -1,19 +1,12 @@
 services:
-  backend:
+  app:
+    container_name: modern-preview-only
     build:
-      context: ./backend
+      context: .
       dockerfile: Dockerfile
-    environment:
-      OFFICE_HOME: /usr/lib/libreoffice
+    image: modern-preview-only:local
     ports:
       - "8080:8080"
-
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    depends_on:
-      - backend
-    ports:
-      - "4173:80"
-
+    environment:
+      JAVA_OPTS: -Xms512m -Xmx1024m
+    restart: unless-stopped
