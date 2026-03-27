@@ -28,6 +28,11 @@ interface PreviewContentProps {
 export function PreviewContent({ session, emptyText }: PreviewContentProps) {
   const [textContent, setTextContent] = useState<string>('')
   const [textError, setTextError] = useState<string | null>(null)
+  const [frameLoading, setFrameLoading] = useState(false)
+
+  useEffect(() => {
+    setFrameLoading(session.previewMode === 'SPREADSHEET' && session.extension !== 'csv')
+  }, [session.contentUrl, session.extension, session.previewMode])
 
   useEffect(() => {
     if (session.previewMode !== 'TEXT' && session.previewMode !== 'MARKDOWN') {
@@ -65,6 +70,15 @@ export function PreviewContent({ session, emptyText }: PreviewContentProps) {
     return hljs.highlightAuto(textContent).value
   }, [session.previewMode, textContent])
 
+  if (session.status === 'UNSUPPORTED') {
+    return (
+      <div className="unsupported-preview">
+        <p className="unsupported-preview__eyebrow">Unsupported file type</p>
+        <h2 className="unsupported-preview__title">{session.fileName}</h2>
+      </div>
+    )
+  }
+
   if (session.status !== 'READY') {
     return <p className="empty-state">{emptyText}</p>
   }
@@ -93,7 +107,22 @@ export function PreviewContent({ session, emptyText }: PreviewContentProps) {
     if (session.extension === 'csv') {
       return <CsvPreview url={session.contentUrl} />
     }
-    return <iframe className="viewer-frame spreadsheet-frame" src={session.contentUrl} title={session.fileName} />
+    return (
+      <div className="viewer-frame-shell">
+        {frameLoading ? (
+          <div className="preview-loading preview-loading--surface" aria-live="polite">
+            <div className="preview-loading__spinner" />
+            <p className="preview-loading__text">Loading spreadsheet preview...</p>
+          </div>
+        ) : null}
+        <iframe
+          className="viewer-frame spreadsheet-frame"
+          src={session.contentUrl}
+          title={session.fileName}
+          onLoad={() => setFrameLoading(false)}
+        />
+      </div>
+    )
   }
 
   if (session.previewMode === 'MARKDOWN') {

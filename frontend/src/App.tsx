@@ -27,6 +27,11 @@ const demoFiles = [
     rich: true,
   },
   {
+    fileName: 'sample-keynote.key',
+    label: 'KEY',
+    description: 'Unsupported Apple Keynote sample to demonstrate the fallback state.',
+  },
+  {
     fileName: 'sample.pdf',
     label: 'PDF',
     description: 'Direct PDF preview without conversion.',
@@ -149,10 +154,25 @@ function App() {
           {error ? <p className="error-banner">{error}</p> : null}
           {session ? (
             <div className="preview-frame preview-frame--embedded">
+              {loading ? (
+                <div className="preview-loading" aria-live="polite">
+                  <div className="preview-loading__spinner" />
+                  <p className="preview-loading__text">{t('loadingAction')}</p>
+                </div>
+              ) : null}
               <PreviewContent session={session} emptyText={t('contentUnavailable')} />
             </div>
           ) : (
-            <p className="empty-state">{loading ? t('loadingAction') : statusTitle}</p>
+            <div className="preview-frame preview-frame--embedded">
+              {loading ? (
+                <div className="preview-loading" aria-live="polite">
+                  <div className="preview-loading__spinner" />
+                  <p className="preview-loading__text">{t('loadingAction')}</p>
+                </div>
+              ) : (
+                <p className="empty-state">{statusTitle}</p>
+              )}
+            </div>
           )}
         </section>
       </main>
@@ -198,13 +218,26 @@ function App() {
 
         <section className="panel panel--preview">
           {session ? (
-            <>
-              <div className="preview-frame">
-                <PreviewContent session={session} emptyText={t('contentUnavailable')} />
-              </div>
-            </>
+            <div className="preview-frame">
+              {loading ? (
+                <div className="preview-loading" aria-live="polite">
+                  <div className="preview-loading__spinner" />
+                  <p className="preview-loading__text">{t('loadingAction')}</p>
+                </div>
+              ) : null}
+              <PreviewContent session={session} emptyText={t('contentUnavailable')} />
+            </div>
           ) : (
-            <p className="empty-state">{loading ? t('loadingAction') : statusTitle}</p>
+            <div className="preview-frame">
+              {loading ? (
+                <div className="preview-loading" aria-live="polite">
+                  <div className="preview-loading__spinner" />
+                  <p className="preview-loading__text">{t('loadingAction')}</p>
+                </div>
+              ) : (
+                <p className="empty-state">{statusTitle}</p>
+              )}
+            </div>
           )}
         </section>
       </main>
