@@ -22,4 +22,16 @@ preview:
     ttl-minutes: 30
   office:
     home: ${OFFICE_HOME:}
-
+  remote:
+    # Optional base URL for relative source paths like /docs/report.docx.
+    base-url: ${PREVIEW_REMOTE_BASE_URL:}
+    # Optional host allowlist. Leave empty to allow any reachable host.
+    allowed-hosts: ${PREVIEW_REMOTE_ALLOWED_HOSTS:}
+    # Default headers sent when fetching remote files, useful for gateway or auth passthrough.
+    default-headers:
+      Authorization: ${PREVIEW_REMOTE_AUTHORIZATION:}
+      X-Preview-Token: ${PREVIEW_REMOTE_TOKEN:}
+    connect-timeout-ms: ${PREVIEW_REMOTE_CONNECT_TIMEOUT_MS:5000}
+    read-timeout-ms: ${PREVIEW_REMOTE_READ_TIMEOUT_MS:60000}
+    max-file-size-bytes: ${PREVIEW_REMOTE_MAX_FILE_SIZE_BYTES:104857600}
+    allow-redirects: ${PREVIEW_REMOTE_ALLOW_REDIRECTS:true}

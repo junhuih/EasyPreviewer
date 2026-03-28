@@ -40,16 +40,16 @@ public class PreviewSessionService {
     }
 
     public PreviewSession create(CreatePreviewRequest request) {
-        remoteContentService.validateUrl(request.sourceUrl());
+        String normalizedSourceUrl = remoteContentService.normalizeSourceUrl(request.sourceUrl());
 
         String locale = localeService.normalizeLocale(request.locale());
-        String fileName = fileTypeService.resolveFileName(request.sourceUrl());
+        String fileName = fileTypeService.resolveFileName(normalizedSourceUrl);
         String extension = fileTypeService.resolveExtension(fileName);
         PreviewCapability capability = capabilityRegistry.resolve(extension);
 
         PreviewSession session = new PreviewSession();
         session.setId(UUID.randomUUID().toString());
-        session.setSourceUrl(request.sourceUrl());
+        session.setSourceUrl(normalizedSourceUrl);
         session.setFileName(fileName);
         session.setExtension(extension);
         session.setLocale(locale);
@@ -66,7 +66,7 @@ public class PreviewSessionService {
         if (capability.conversionRequired()) {
             try {
                 session.setStatus(PreviewStatus.PROCESSING);
-                var inputPath = remoteContentService.downloadToTempFile(request.sourceUrl(), fileName);
+                var inputPath = remoteContentService.downloadToTempFile(normalizedSourceUrl, fileName);
                 if (useBrowserSpreadsheetViewer(extension)) {
                     session.setContentPath(inputPath);
                     session.setContentType(resolveContentType(extension));

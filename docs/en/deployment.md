@@ -63,6 +63,49 @@ Notes:
 - That means normal browser-side CORS is not needed for preview loading.
 - The target file URL must still be reachable from the backend host or container.
 
+## Remote File Server Configuration
+
+At startup, the backend reads `preview.remote.*` settings to control how remote files are fetched. The configuration entry point is [backend/src/main/resources/application.yml](/Users/orbit-0427/Documents/EasyPreviewer/backend/src/main/resources/application.yml).
+
+You can still pass a full remote URL:
+
+```text
+http://localhost:5173/?fileUrl=https%3A%2F%2Ffiles.example.com%2Freports%2Fdemo.docx
+```
+
+Or configure a shared remote file server base URL and pass only a relative path:
+
+```bash
+export PREVIEW_REMOTE_BASE_URL=https://files.example.com/storage/
+export PREVIEW_REMOTE_ALLOWED_HOSTS=files.example.com
+export PREVIEW_REMOTE_CONNECT_TIMEOUT_MS=5000
+export PREVIEW_REMOTE_READ_TIMEOUT_MS=60000
+export PREVIEW_REMOTE_MAX_FILE_SIZE_BYTES=104857600
+export PREVIEW_REMOTE_AUTHORIZATION="Bearer your-token"
+```
+
+Then open:
+
+```text
+http://localhost:5173/?fileUrl=reports%2Fdemo.docx
+```
+
+Key settings:
+
+- `preview.remote.base-url`: optional base URL used to resolve relative `fileUrl` values
+- `preview.remote.allowed-hosts`: optional allowlist of reachable hosts; leave empty to allow any reachable host
+- `preview.remote.default-headers`: default request headers sent by the backend when fetching remote files
+- `preview.remote.connect-timeout-ms`: connection timeout
+- `preview.remote.read-timeout-ms`: read timeout
+- `preview.remote.max-file-size-bytes`: maximum accepted remote file size
+- `preview.remote.allow-redirects`: whether the backend follows HTTP redirects
+
+Startup behavior:
+
+- Spring Boot binds these values when the backend starts.
+- Startup logs print the loaded remote file configuration without exposing header secrets.
+- Restart the backend after changing environment variables or `application.yml`.
+
 ## Docker
 
 The local Docker image bundles LibreOffice and serves the frontend and backend from one container on port `8080`.

@@ -100,6 +100,49 @@ Notes:
 - In embedded mode, the browser only loads the EasyPreviewer page. The backend fetches the `fileUrl` server-side, so browser-side CORS is not required for normal preview loading.
 - The file URL must still be reachable from the backend process or container.
 
+### Remote File Server Configuration
+
+The backend now reads remote file server settings during startup from `preview.remote.*` in [backend/src/main/resources/application.yml](/Users/orbit-0427/Documents/EasyPreviewer/backend/src/main/resources/application.yml).
+
+You can keep passing a full file URL:
+
+```text
+http://localhost:5173/?fileUrl=https%3A%2F%2Ffiles.example.com%2Freports%2Fdemo.docx
+```
+
+Or configure a shared file server base URL and pass only a relative file path:
+
+```bash
+export PREVIEW_REMOTE_BASE_URL=https://files.example.com/storage/
+export PREVIEW_REMOTE_ALLOWED_HOSTS=files.example.com
+export PREVIEW_REMOTE_CONNECT_TIMEOUT_MS=5000
+export PREVIEW_REMOTE_READ_TIMEOUT_MS=60000
+export PREVIEW_REMOTE_MAX_FILE_SIZE_BYTES=104857600
+export PREVIEW_REMOTE_AUTHORIZATION="Bearer your-token"
+```
+
+Then open:
+
+```text
+http://localhost:5173/?fileUrl=reports%2Fdemo.docx
+```
+
+Available remote settings:
+
+- `preview.remote.base-url`: optional base URL used to resolve relative `fileUrl` values
+- `preview.remote.allowed-hosts`: optional allowlist of remote hosts; leave empty to allow any reachable host
+- `preview.remote.default-headers`: default request headers sent to the remote file server
+- `preview.remote.connect-timeout-ms`: connection timeout for remote fetches
+- `preview.remote.read-timeout-ms`: read timeout for remote fetches
+- `preview.remote.max-file-size-bytes`: maximum remote file size accepted by the backend
+- `preview.remote.allow-redirects`: whether the backend should follow HTTP redirects while fetching the file
+
+Startup behavior:
+
+- These values are bound by Spring Boot when the backend starts.
+- The backend logs the loaded remote file configuration at startup, excluding header secrets.
+- If you change environment variables or `application.yml`, restart the backend to load the new values.
+
 ### Demo Assets
 
 The clickable demo page uses generated samples under [frontend/public/demo/files](/Users/orbit-0427/Documents/EasyPreviewer/frontend/public/demo/files). To regenerate them:

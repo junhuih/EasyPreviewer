@@ -1,3 +1,19 @@
+FROM node:22-bookworm-slim AS frontend-builder
+
+WORKDIR /workspace/frontend
+COPY frontend/package*.json ./
+RUN npm ci
+COPY frontend/ ./
+RUN npm run build
+
+FROM maven:3.9.9-eclipse-temurin-21 AS backend-builder
+
+WORKDIR /workspace
+COPY backend/pom.xml backend/pom.xml
+COPY backend/src backend/src
+COPY --from=frontend-builder /workspace/frontend/dist/ backend/src/main/resources/static/
+RUN mvn -f backend/pom.xml clean package -DskipTests
+
 FROM mcr.microsoft.com/devcontainers/java:1-21-bookworm@sha256:0af991049cded4b8d5a90d2614289ceec390779ad6a3e4b70957e2b4f3bb1230
 
 RUN rm -f /etc/apt/sources.list.d/yarn.list /etc/apt/sources.list.d/yarn.sources \
@@ -22,7 +38,7 @@ ENV OFFICE_HOME=/usr/lib/libreoffice
 ENV JAVA_OPTS=""
 
 WORKDIR /app
-COPY backend/target/preview-backend-0.1.0-SNAPSHOT.jar /app/app.jar
+COPY --from=backend-builder /workspace/backend/target/preview-backend-0.1.0-SNAPSHOT.jar /app/app.jar
 
 EXPOSE 8080
 
