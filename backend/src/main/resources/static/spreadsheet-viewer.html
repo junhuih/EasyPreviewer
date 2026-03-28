@@ -45,6 +45,19 @@
         z-index: 30;
       }
 
+      #sheet-tabs {
+        position: absolute;
+        left: 18px;
+        right: 18px;
+        bottom: 6px;
+        display: flex;
+        gap: 2px;
+        align-items: flex-end;
+        flex-wrap: wrap;
+        z-index: 40;
+        pointer-events: none;
+      }
+
       #luckysheet {
         position: absolute;
         inset: 0;
@@ -67,7 +80,9 @@
       .luckysheet-cols-menu,
       .luckysheet-rows-menu,
       .luckysheet-sheets-add,
-      .luckysheet-sheets-m {
+      .luckysheet-sheets-m,
+      #luckysheet-sheets-leftscroll,
+      #luckysheet-sheets-rightscroll {
         display: none !important;
       }
 
@@ -93,20 +108,47 @@
       }
 
       .luckysheet-sheet-area {
-        border-top: 1px solid rgba(18, 33, 58, 0.08);
-        background: linear-gradient(180deg, #eef4fb 0%, #e6edf7 100%);
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+        min-height: 48px;
+        border-top: 1px solid #d7dbe2;
+        background: linear-gradient(180deg, #f7f8fa 0%, #eef1f5 100%);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.92);
       }
 
-      .luckysheet-sheets-item {
-        padding: 0 14px !important;
-        border-radius: 12px 12px 0 0 !important;
+      .luckysheet-sheet-area .luckysheet-sheets-item,
+      .luckysheet-sheet-area .luckysheet-sheets-item-active {
+        opacity: 0 !important;
+        pointer-events: none !important;
+        width: 0 !important;
+        min-width: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
       }
 
-      .luckysheet-sheets-item-active {
-        background: #ffffff !important;
-        color: #132844 !important;
-        box-shadow: 0 -1px 0 rgba(255, 255, 255, 0.92), 0 12px 20px rgba(19, 40, 68, 0.08);
+      .sheet-tab {
+        pointer-events: auto;
+        min-width: 112px;
+        border: 1px solid #d2d7de;
+        border-bottom-color: transparent;
+        border-radius: 8px 8px 0 0;
+        padding: 7px 16px 8px;
+        background: linear-gradient(180deg, #fcfcfd 0%, #eff2f6 100%);
+        color: #5d6777;
+        font: 500 13px/1 "IBM Plex Sans", "Noto Sans SC", system-ui, sans-serif;
+        cursor: pointer;
+        transition: background 0.14s ease, color 0.14s ease, border-color 0.14s ease;
+      }
+
+      .sheet-tab:hover {
+        background: linear-gradient(180deg, #ffffff 0%, #f4f6f9 100%);
+        color: #39485d;
+      }
+
+      .sheet-tab.is-active {
+        background: #ffffff;
+        color: #22324c;
+        border-color: #cfd4db;
+        box-shadow: inset 0 2px 0 #1f6feb;
       }
     </style>
     <script src="/xlsx/plugins/js/plugin.js"></script>
@@ -117,12 +159,14 @@
     <div id="loading">Loading spreadsheet preview...</div>
     <div id="error"></div>
     <div id="luckysheet"></div>
+    <div id="sheet-tabs"></div>
     <script>
       const params = new URLSearchParams(window.location.search)
       const file = params.get('file')
       const lang = params.get('lang') || 'en'
       const loading = document.getElementById('loading')
       const error = document.getElementById('error')
+      const sheetTabs = document.getElementById('sheet-tabs')
 
       function excelSerialToDate(value) {
         const utcDays = Math.floor(value - 25569)
@@ -212,23 +256,66 @@
         })
       }
 
-      function setupTrackpadScroll() {
-        const host = document.getElementById('luckysheet')
-        if (!host) {
+      function renderSheetTabs(sheets) {
+        if (!sheetTabs) {
           return
         }
 
-        host.addEventListener(
+        sheetTabs.innerHTML = ''
+        const nativeTabs = () => Array.from(document.querySelectorAll('.luckysheet-sheets-item'))
+        const initialActiveIndex = Math.max(
+          0,
+          sheets.findIndex((sheet) => sheet.status === 1 || sheet.status === '1')
+        )
+
+        const setActive = (activeIndex) => {
+          Array.from(sheetTabs.querySelectorAll('.sheet-tab')).forEach((button, index) => {
+            button.classList.toggle('is-active', index === activeIndex)
+          })
+        }
+
+        sheets.forEach((sheet, index) => {
+          const button = document.createElement('button')
+          button.type = 'button'
+          button.className = `sheet-tab${index === initialActiveIndex ? ' is-active' : ''}`
+          button.textContent = sheet.name || `Sheet ${index + 1}`
+          button.addEventListener('click', () => {
+            const currentNativeTabs = nativeTabs()
+            if (currentNativeTabs[index]) {
+              currentNativeTabs[index].click()
+            }
+            setActive(index)
+          })
+          sheetTabs.appendChild(button)
+        })
+      }
+
+      function setupVerticalWheelDamping() {
+        const cellMain = document.getElementById('luckysheet-cell-main')
+        if (!cellMain) {
+          return
+        }
+
+        let rafId = 0
+        let queuedDeltaY = 0
+        const flush = () => {
+          cellMain.scrollTop += queuedDeltaY * 0.45
+          queuedDeltaY = 0
+          rafId = 0
+        }
+
+        cellMain.addEventListener(
           'wheel',
           (event) => {
-            const cellMain = document.getElementById('luckysheet-cell-main')
-            if (!cellMain || !cellMain.contains(event.target)) {
+            if (Math.abs(event.deltaX) >= Math.abs(event.deltaY) || Math.abs(event.deltaY) < 1) {
               return
             }
 
             event.preventDefault()
-            cellMain.scrollLeft += event.deltaX
-            cellMain.scrollTop += event.deltaY
+            queuedDeltaY += event.deltaY
+            if (!rafId) {
+              rafId = window.requestAnimationFrame(flush)
+            }
           },
           { passive: false }
         )
@@ -343,7 +430,8 @@
         })
 
         polishViewerChrome()
-        setupTrackpadScroll()
+        renderSheetTabs(exportJson.sheets)
+        setupVerticalWheelDamping()
       }
 
       function polishViewerChrome() {
@@ -355,6 +443,8 @@
           '.luckysheet-rows-menu',
           '.luckysheet-sheets-add',
           '.luckysheet-sheets-m',
+          '#luckysheet-sheets-leftscroll',
+          '#luckysheet-sheets-rightscroll',
           '#luckysheet-input-box',
           '#luckysheet-input-box-index',
           '#luckysheet-input-box-container',
