@@ -63,6 +63,49 @@ iframe 示例：
 - 因此正常预览场景下不需要处理浏览器侧的 CORS。
 - 目标文件地址仍然必须能被后端进程或容器访问到。
 
+## 远端文件服务器配置
+
+后端启动时会读取 `preview.remote.*` 配置，用于控制远端文件服务器的访问行为。配置入口见 [backend/src/main/resources/application.yml](/Users/orbit-0427/Documents/EasyPreviewer/backend/src/main/resources/application.yml)。
+
+你可以继续直接传完整 URL：
+
+```text
+http://localhost:5173/?fileUrl=https%3A%2F%2Ffiles.example.com%2Freports%2Fdemo.docx
+```
+
+也可以先配置统一的远端文件服务器地址，再只传相对路径：
+
+```bash
+export PREVIEW_REMOTE_BASE_URL=https://files.example.com/storage/
+export PREVIEW_REMOTE_ALLOWED_HOSTS=files.example.com
+export PREVIEW_REMOTE_CONNECT_TIMEOUT_MS=5000
+export PREVIEW_REMOTE_READ_TIMEOUT_MS=60000
+export PREVIEW_REMOTE_MAX_FILE_SIZE_BYTES=104857600
+export PREVIEW_REMOTE_AUTHORIZATION="Bearer your-token"
+```
+
+然后访问：
+
+```text
+http://localhost:5173/?fileUrl=reports%2Fdemo.docx
+```
+
+主要配置项：
+
+- `preview.remote.base-url`：可选，给相对 `fileUrl` 补全远端文件服务器前缀
+- `preview.remote.allowed-hosts`：可选，允许访问的远端主机白名单；留空表示不限制
+- `preview.remote.default-headers`：后端拉取远端文件时附带的默认请求头
+- `preview.remote.connect-timeout-ms`：建立连接超时
+- `preview.remote.read-timeout-ms`：读取超时
+- `preview.remote.max-file-size-bytes`：允许拉取的远端文件最大大小
+- `preview.remote.allow-redirects`：是否允许后端跟随 HTTP 重定向
+
+启动说明：
+
+- 这些值由 Spring Boot 在后端启动时绑定。
+- 应用启动日志会打印已加载的远端文件配置，但不会输出请求头密钥内容。
+- 如果修改了环境变量或 `application.yml`，需要重启后端后才会生效。
+
 ## Docker
 
 本地 Docker 镜像已经内置 LibreOffice，并通过单个容器在 `8080` 端口同时提供前端与后端服务。

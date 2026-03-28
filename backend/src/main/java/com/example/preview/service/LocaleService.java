@@ -20,7 +20,11 @@ public class LocaleService {
                     Map.entry("preview.unsupported.media", "Server-side media transcoding is intentionally not supported in v1."),
                     Map.entry("preview.unsupported.general", "This file type is not supported in this preview-only product."),
                     Map.entry("preview.office.missing", "LibreOffice is required for Office preview but is not available."),
-                    Map.entry("preview.invalid.url", "Only HTTP and HTTPS source URLs are allowed.")
+                    Map.entry("preview.invalid.url", "Only HTTP and HTTPS source URLs are allowed."),
+                    Map.entry("preview.remote.base-url.required", "A relative file path requires preview.remote.base-url to be configured."),
+                    Map.entry("preview.remote.host.not.allowed", "The target host is not in the preview.remote.allowed-hosts allowlist."),
+                    Map.entry("preview.remote.fetch.failed", "The remote file server could not be reached or returned a non-success response."),
+                    Map.entry("preview.remote.file.too.large", "The remote file exceeds the configured preview.remote.max-file-size-bytes limit.")
             ),
             "zh", Map.ofEntries(
                     Map.entry("preview.ready", "预览已就绪。"),
@@ -30,7 +34,11 @@ public class LocaleService {
                     Map.entry("preview.unsupported.media", "V1 阶段明确不支持服务端音视频转码。"),
                     Map.entry("preview.unsupported.general", "当前预览产品不支持该文件类型。"),
                     Map.entry("preview.office.missing", "Office 预览依赖 LibreOffice，但当前环境不可用。"),
-                    Map.entry("preview.invalid.url", "仅允许使用 HTTP 或 HTTPS 源地址。")
+                    Map.entry("preview.invalid.url", "仅允许使用 HTTP 或 HTTPS 源地址。"),
+                    Map.entry("preview.remote.base-url.required", "当传入相对文件路径时，必须先配置 preview.remote.base-url。"),
+                    Map.entry("preview.remote.host.not.allowed", "目标主机不在 preview.remote.allowed-hosts 白名单内。"),
+                    Map.entry("preview.remote.fetch.failed", "远端文件服务器不可访问，或返回了非成功状态码。"),
+                    Map.entry("preview.remote.file.too.large", "远端文件超过了 preview.remote.max-file-size-bytes 的限制。")
             )
     );
 
@@ -55,4 +63,3 @@ public class LocaleService {
                 .getOrDefault(key, messages.get("en").getOrDefault(key, key));
     }
 }
-
