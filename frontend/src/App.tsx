@@ -93,6 +93,15 @@ function App() {
   const [error, setError] = useState<string | null>(null)
   const [selectedFileName, setSelectedFileName] = useState(demoFiles[0]?.fileName ?? '')
 
+  useEffect(() => {
+    document.documentElement.classList.toggle('embed-mode', embeddedMode)
+    document.body.classList.toggle('embed-mode', embeddedMode)
+    return () => {
+      document.documentElement.classList.remove('embed-mode')
+      document.body.classList.remove('embed-mode')
+    }
+  }, [embeddedMode])
+
   const statusTitle = useMemo(() => {
     if (!session) return t('sessionTitle')
     if (session.status === 'READY') return t('readyTitle')
@@ -151,7 +160,6 @@ function App() {
     return (
       <main className="embed-shell">
         <section className="embed-frame" aria-label="Embedded preview frame">
-          {error ? <p className="error-banner">{error}</p> : null}
           {session ? (
             <div className="preview-frame preview-frame--embedded">
               {loading ? (
@@ -160,6 +168,7 @@ function App() {
                   <p className="preview-loading__text">{t('loadingAction')}</p>
                 </div>
               ) : null}
+              {error ? <p className="error-banner error-banner--embedded">{error}</p> : null}
               <PreviewContent session={session} emptyText={t('contentUnavailable')} />
             </div>
           ) : (
@@ -170,7 +179,7 @@ function App() {
                   <p className="preview-loading__text">{t('loadingAction')}</p>
                 </div>
               ) : (
-                <p className="empty-state">{statusTitle}</p>
+                <p className="empty-state empty-state--embedded">{error ?? statusTitle}</p>
               )}
             </div>
           )}
