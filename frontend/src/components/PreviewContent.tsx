@@ -12,6 +12,7 @@ import java from 'highlight.js/lib/languages/java'
 import type { PreviewSessionResponse } from '../types'
 import { CsvPreview } from './CsvPreview'
 import { PdfPreview } from './PdfPreview'
+import { VideoPreview } from './VideoPreview'
 
 hljs.registerLanguage('javascript', javascript)
 hljs.registerLanguage('json', json)
@@ -92,11 +93,7 @@ export function PreviewContent({ session, emptyText }: PreviewContentProps) {
   }
 
   if (session.previewMode === 'VIDEO') {
-    return (
-      <video className="video-preview" src={session.contentUrl} controls preload="metadata">
-        {session.fileName}
-      </video>
-    )
+    return <VideoPreview fileName={session.fileName} src={session.contentUrl} />
   }
 
   if (textError) {
