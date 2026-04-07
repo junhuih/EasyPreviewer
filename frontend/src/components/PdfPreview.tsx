@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { GlobalWorkerOptions, getDocument } from 'pdfjs-dist'
+import type { PDFDocumentProxy } from 'pdfjs-dist'
 import workerSrc from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 
 GlobalWorkerOptions.workerSrc = workerSrc
@@ -14,8 +15,10 @@ export function PdfPreview({ fileName, url }: PdfPreviewProps) {
   const pagesViewportRef = useRef<HTMLDivElement | null>(null)
   const pagesRef = useRef<HTMLDivElement | null>(null)
   const scrollProgressRef = useRef(0)
+  const loadingTaskRef = useRef<ReturnType<typeof getDocument> | null>(null)
   const [containerWidth, setContainerWidth] = useState(960)
   const [zoom, setZoom] = useState(1)
+  const [pdfDocument, setPdfDocument] = useState<PDFDocumentProxy | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -36,15 +39,54 @@ export function PdfPreview({ fileName, url }: PdfPreviewProps) {
   }, [])
 
   useEffect(() => {
+    let cancelled = false
+
+    setLoading(true)
+    setError(null)
+    setPdfDocument(null)
+
+    if (loadingTaskRef.current) {
+      loadingTaskRef.current.destroy()
+      loadingTaskRef.current = null
+    }
+
+    const loadingTask = getDocument(url)
+    loadingTaskRef.current = loadingTask
+
+    void loadingTask.promise
+      .then((pdf) => {
+        if (cancelled) {
+          pdf.destroy()
+          return
+        }
+
+        setPdfDocument(pdf)
+        setLoading(false)
+      })
+      .catch((renderError) => {
+        if (!cancelled) {
+          setError(renderError instanceof Error ? renderError.message : 'Unable to render PDF preview.')
+          setLoading(false)
+        }
+      })
+
+    return () => {
+      cancelled = true
+      loadingTask.destroy()
+      if (loadingTaskRef.current === loadingTask) {
+        loadingTaskRef.current = null
+      }
+    }
+  }, [url])
+
+  useEffect(() => {
     const element = pagesRef.current
-    if (!element) {
+    if (!element || !pdfDocument) {
       return
     }
 
     let cancelled = false
     const canvases: HTMLCanvasElement[] = []
-    setLoading(true)
-    setError(null)
     element.innerHTML = ''
 
     const captureScrollProgress = () => {
@@ -69,15 +111,12 @@ export function PdfPreview({ fileName, url }: PdfPreviewProps) {
 
     const render = async () => {
       try {
-        const loadingTask = getDocument(url)
-        const pdf = await loadingTask.promise
-
-        for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+        for (let pageNumber = 1; pageNumber <= pdfDocument.numPages; pageNumber += 1) {
           if (cancelled) {
             return
           }
 
-          const page = await pdf.getPage(pageNumber)
+          const page = await pdfDocument.getPage(pageNumber)
           const baseViewport = page.getViewport({ scale: 1 })
           const fitScale = Math.max(0.75, Math.min(2, containerWidth / baseViewport.width))
           const scale = Math.max(0.4, Math.min(3, fitScale * zoom))
@@ -108,7 +147,6 @@ export function PdfPreview({ fileName, url }: PdfPreviewProps) {
         }
 
         if (!cancelled) {
-          setLoading(false)
           window.requestAnimationFrame(() => {
             if (!cancelled) {
               restoreScrollProgress()
@@ -130,7 +168,7 @@ export function PdfPreview({ fileName, url }: PdfPreviewProps) {
       captureScrollProgress()
       canvases.forEach((canvas) => canvas.remove())
     }
-  }, [containerWidth, url, zoom])
+  }, [containerWidth, pdfDocument, zoom])
 
   const zoomPercent = useMemo(() => `${Math.round(zoom * 100)}%`, [zoom])
 
