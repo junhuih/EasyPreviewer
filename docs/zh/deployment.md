@@ -100,6 +100,71 @@ http://localhost:5173/?fileUrl=reports%2Fdemo.docx
 - `preview.remote.max-file-size-bytes`：允许拉取的远端文件最大大小
 - `preview.remote.allow-redirects`：是否允许后端跟随 HTTP 重定向
 
+## 旧版入口兼容
+
+旧系统仍然可以调用：
+
+```text
+/onlinePreview?url=<BASE64 编码后的 URL>
+```
+
+后端会先把 `url` 参数按 Base64 解码，再重定向到新的 `?fileUrl=` 入口，并自动带上当前 context path。
+
+这个入口只用于兼容老系统，新接入建议直接使用 `?fileUrl=`。
+
+示例：
+
+```text
+/onlinePreview?url=aHR0cHM6Ly9leGFtcGxlLmNvbS9maWxlcy9yZXBvcnQucGRm
+```
+
+最终会跳转到：
+
+```text
+/?fileUrl=https%3A%2F%2Fexample.com%2Ffiles%2Freport.pdf
+```
+
+### 内网抓取重写
+
+如果后端可以直连内网文件服务器，但浏览器侧仍然必须使用经过 Cloudflare 或 Entra 的公网地址，可以开启后端抓取重写，把“浏览器可见地址”和“后端实际抓取地址”分开。
+
+示例：
+
+```bash
+export PREVIEW_REMOTE_REWRITE_HOST=127.0.0.1
+export PREVIEW_REMOTE_REWRITE_SCHEME=http
+export PREVIEW_REMOTE_REWRITE_PORT=12580
+```
+
+这样当 `fileUrl` 是 `https://files.example.com/reports/demo.docx` 时，后端实际会去抓 `http://127.0.0.1:12580/reports/demo.docx`。
+
+说明：
+
+- 这个重写只影响后端抓取，不影响浏览器里看到的地址。
+- `preview.remote.allowed-hosts` 仍然会先按原始 `fileUrl` 的 host 做校验。
+- 如果要用重写模式，通常需要把 `allowed-hosts` 留空，或者把原始公网 host 加进白名单。
+
+## 子路径部署
+
+这个应用也可以挂在类似 `/fileViewer/` 的路径前缀下。
+
+需要给后端设置 context path：
+
+```bash
+export SERVER_SERVLET_CONTEXT_PATH=/fileViewer
+```
+
+然后用前缀访问应用，例如：
+
+```text
+https://example.com/fileViewer/
+```
+
+说明：
+
+- 前端构建已经改成相对路径引用，挂在前缀下面时静态资源仍然能正常加载。
+- 后端也会把预览响应里的资源路径保持在同一个前缀下。
+
 启动说明：
 
 - 这些值由 Spring Boot 在后端启动时绑定。

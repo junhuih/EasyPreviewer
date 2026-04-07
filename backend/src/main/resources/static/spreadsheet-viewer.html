@@ -4,10 +4,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>EasyPreviewer Spreadsheet</title>
-    <link rel="stylesheet" href="/xlsx/plugins/css/pluginsCss.css" />
-    <link rel="stylesheet" href="/xlsx/plugins/plugins.css" />
-    <link rel="stylesheet" href="/xlsx/css/luckysheet.css" />
-    <link rel="stylesheet" href="/xlsx/assets/iconfont/iconfont.css" />
+    <link rel="stylesheet" href="xlsx/plugins/css/pluginsCss.css" />
+    <link rel="stylesheet" href="xlsx/plugins/plugins.css" />
+    <link rel="stylesheet" href="xlsx/css/luckysheet.css" />
+    <link rel="stylesheet" href="xlsx/assets/iconfont/iconfont.css" />
     <style>
       html,
       body {
@@ -107,6 +107,15 @@
         -webkit-overflow-scrolling: touch;
       }
 
+      #luckysheet-image-showBoxs,
+      #luckysheet-image-showBoxs * {
+        pointer-events: none !important;
+      }
+
+      #luckysheet-modal-dialog-activeImage {
+        display: none !important;
+      }
+
       .luckysheet-sheet-area {
         min-height: 48px;
         border-top: 1px solid #d7dbe2;
@@ -151,9 +160,9 @@
         box-shadow: inset 0 2px 0 #1f6feb;
       }
     </style>
-    <script src="/xlsx/plugins/js/plugin.js"></script>
-    <script src="/xlsx/luckysheet.umd.js"></script>
-    <script src="/xlsx/luckyexcel.umd.js"></script>
+    <script src="xlsx/plugins/js/plugin.js"></script>
+    <script src="xlsx/luckysheet.umd.js"></script>
+    <script src="xlsx/luckyexcel.umd.js"></script>
   </head>
   <body>
     <div id="loading">Loading spreadsheet preview...</div>
@@ -164,46 +173,59 @@
       const params = new URLSearchParams(window.location.search)
       const file = params.get('file')
       const lang = params.get('lang') || 'en'
+      const sessionId = params.get('session')
       const loading = document.getElementById('loading')
       const error = document.getElementById('error')
       const sheetTabs = document.getElementById('sheet-tabs')
 
-      function excelSerialToDate(value) {
-        const utcDays = Math.floor(value - 25569)
-        const utcValue = utcDays * 86400
-        const dateInfo = new Date(utcValue * 1000)
-        const fractionalDay = value - Math.floor(value) + 0.0000001
-        const totalSeconds = Math.floor(86400 * fractionalDay)
-        const seconds = totalSeconds % 60
-        const totalMinutes = Math.floor(totalSeconds / 60)
-        const minutes = totalMinutes % 60
-        const hours = Math.floor(totalMinutes / 60)
+      async function fetchDisplayOverrides() {
+        if (!sessionId) {
+          return null
+        }
 
-        dateInfo.setUTCHours(hours)
-        dateInfo.setUTCMinutes(minutes)
-        dateInfo.setUTCSeconds(seconds)
-        dateInfo.setUTCMilliseconds(0)
-        return dateInfo
+        const response = await fetch(`api/previews/${sessionId}/spreadsheet-display`)
+        if (!response.ok) {
+          return null
+        }
+
+        return response.json()
       }
 
-      function formatExcelDate(value) {
-        const date = excelSerialToDate(value)
-        const year = date.getUTCFullYear()
-        const month = date.getUTCMonth() + 1
-        const day = date.getUTCDate()
-        return `${year}/${month}/${day}`
-      }
+      function applyDisplayOverrides(exportJson, overrides) {
+        if (!overrides || !Array.isArray(overrides.sheets)) {
+          return
+        }
 
-      function normalizeDateColumns(exportJson) {
+        const overrideMap = new Map(
+          overrides.sheets.map((sheet) => [
+            sheet.name,
+            new Map(sheet.cells.map((cell) => [`${cell.row}:${cell.col}`, cell.display])),
+          ])
+        )
+
         exportJson.sheets.forEach((sheet) => {
-          const headerByColumn = new Map()
-          const dateColumns = new Set()
-          const cells = []
+          const sheetOverrides = overrideMap.get(sheet.name)
+          if (!sheetOverrides) {
+            return
+          }
+
+          const patchCell = (row, col, cell) => {
+            const display = sheetOverrides.get(`${row}:${col}`)
+            if (!display || !cell) {
+              return
+            }
+            cell.v = display
+            cell.m = display
+            cell.ct = {
+              fa: '@',
+              t: 's',
+            }
+          }
 
           if (Array.isArray(sheet.celldata)) {
             sheet.celldata.forEach((entry) => {
               if (entry && entry.v) {
-                cells.push({ row: entry.r, col: entry.c, cell: entry.v })
+                patchCell(entry.r, entry.c, entry.v)
               }
             })
           }
@@ -214,46 +236,29 @@
                 return
               }
               row.forEach((cell, colIndex) => {
-                if (cell) {
-                  cells.push({ row: rowIndex, col: colIndex, cell })
-                }
+                patchCell(rowIndex, colIndex, cell)
               })
             })
           }
-
-          cells.forEach(({ row, col, cell }) => {
-            if (row !== 0) {
-              return
-            }
-            const text = String(cell.m ?? cell.v ?? '').trim().toLowerCase()
-            if (text) {
-              headerByColumn.set(col, text)
-            }
-          })
-
-          headerByColumn.forEach((text, col) => {
-            if (text.includes('date')) {
-              dateColumns.add(col)
-            }
-          })
-
-          cells.forEach(({ row, col, cell }) => {
-            if (row === 0 || !dateColumns.has(col)) {
-              return
-            }
-
-            const rawValue = typeof cell.v === 'number' ? cell.v : Number.NaN
-            if (!Number.isFinite(rawValue) || rawValue < 1 || rawValue > 90000) {
-              return
-            }
-
-            cell.ct = {
-              fa: 'yyyy/m/d',
-              t: 'n',
-            }
-            cell.m = formatExcelDate(rawValue)
-          })
         })
+      }
+
+      function normalizeSheetZoom(sheets) {
+        if (!Array.isArray(sheets)) {
+          return
+        }
+
+        sheets.forEach((sheet) => {
+          if (sheet && typeof sheet === 'object') {
+            sheet.zoomRatio = 1
+          }
+        })
+      }
+
+      function showError(message) {
+        loading.style.display = 'none'
+        error.style.display = 'flex'
+        error.textContent = message
       }
 
       function renderSheetTabs(sheets) {
@@ -292,46 +297,88 @@
 
       function setupVerticalWheelDamping() {
         const cellMain = document.getElementById('luckysheet-cell-main')
-        if (!cellMain) {
+        const gridWindow = document.getElementById('luckysheet-grid-window-1')
+        const scrollBarY = document.getElementById('luckysheet-scrollbar-y')
+        const scrollTarget = scrollBarY || cellMain
+        if (!cellMain || !scrollTarget) {
           return
         }
 
         let rafId = 0
         let queuedDeltaY = 0
+        let refreshTimer = 0
+        const refreshGrid = () => {
+          if (window.luckysheet && typeof window.luckysheet.jfrefreshgrid === 'function') {
+            try {
+              window.luckysheet.jfrefreshgrid()
+            } catch (error) {
+              console.warn('Failed to refresh spreadsheet grid after scroll.', error)
+            }
+          }
+        }
+        const scheduleRefresh = () => {
+          if (refreshTimer) {
+            window.clearTimeout(refreshTimer)
+          }
+          refreshTimer = window.setTimeout(() => {
+            refreshGrid()
+            refreshTimer = 0
+          }, 60)
+        }
         const flush = () => {
-          cellMain.scrollTop += queuedDeltaY * 0.45
+          if (scrollTarget) {
+            scrollTarget.scrollTop += queuedDeltaY * 0.22
+          }
           queuedDeltaY = 0
           rafId = 0
+          scheduleRefresh()
         }
 
-        cellMain.addEventListener(
-          'wheel',
-          (event) => {
-            if (Math.abs(event.deltaX) >= Math.abs(event.deltaY) || Math.abs(event.deltaY) < 1) {
-              return
-            }
+        const handleWheel = (event) => {
+          if (Math.abs(event.deltaX) >= Math.abs(event.deltaY) || Math.abs(event.deltaY) < 1) {
+            return
+          }
 
-            event.preventDefault()
-            queuedDeltaY += event.deltaY
-            if (!rafId) {
-              rafId = window.requestAnimationFrame(flush)
-            }
-          },
-          { passive: false }
-        )
+          event.preventDefault()
+          event.stopPropagation()
+          const deltaModeScale = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? cellMain.clientHeight : 1
+          const normalizedDeltaY = event.deltaY * deltaModeScale
+          queuedDeltaY += Math.sign(normalizedDeltaY) * Math.min(Math.abs(normalizedDeltaY), 120)
+          if (!rafId) {
+            rafId = window.requestAnimationFrame(flush)
+          }
+        }
+
+        cellMain.addEventListener('wheel', handleWheel, { passive: false })
+        if (gridWindow) {
+          gridWindow.addEventListener('wheel', handleWheel, { passive: false, capture: true })
+        }
+        if (scrollBarY) {
+          scrollBarY.addEventListener('wheel', handleWheel, { passive: false, capture: true })
+        }
+        cellMain.addEventListener('scroll', scheduleRefresh, { passive: true })
+        if (scrollTarget !== cellMain) {
+          scrollTarget.addEventListener('scroll', scheduleRefresh, { passive: true })
+        }
       }
 
-      function showError(message) {
-        loading.style.display = 'none'
-        error.style.display = 'flex'
-        error.textContent = message
+      function lockImageLayer() {
+        const activeImage = document.getElementById('luckysheet-modal-dialog-activeImage')
+        const imageShowBoxs = document.getElementById('luckysheet-image-showBoxs')
+        if (activeImage) {
+          activeImage.style.display = 'none'
+        }
+        if (imageShowBoxs) {
+          imageShowBoxs.style.pointerEvents = 'none'
+        }
       }
 
-      function buildWorkbook(exportJson) {
+      function buildWorkbook(exportJson, overrides) {
         const workbookName =
           exportJson.info && exportJson.info.name ? exportJson.info.name : 'EasyPreviewer Workbook'
 
-        normalizeDateColumns(exportJson)
+        applyDisplayOverrides(exportJson, overrides)
+        normalizeSheetZoom(exportJson.sheets)
 
         window.luckysheet.create({
           container: 'luckysheet',
@@ -432,6 +479,7 @@
         polishViewerChrome()
         renderSheetTabs(exportJson.sheets)
         setupVerticalWheelDamping()
+        lockImageLayer()
       }
 
       function polishViewerChrome() {
@@ -443,8 +491,6 @@
           '.luckysheet-rows-menu',
           '.luckysheet-sheets-add',
           '.luckysheet-sheets-m',
-          '#luckysheet-sheets-leftscroll',
-          '#luckysheet-sheets-rightscroll',
           '#luckysheet-input-box',
           '#luckysheet-input-box-index',
           '#luckysheet-input-box-container',
@@ -466,20 +512,36 @@
       if (!file) {
         showError('Missing spreadsheet file URL.')
       } else {
-        LuckyExcel.transformExcelToLuckyByUrl(file, 'spreadsheet.xlsx', function (exportJson) {
-          if (!exportJson.sheets || exportJson.sheets.length === 0) {
+        Promise.all([
+          fetchDisplayOverrides(),
+          new Promise((resolve, reject) => {
+            LuckyExcel.transformExcelToLuckyByUrl(
+              file,
+              'spreadsheet.xlsx',
+              function (exportJson) {
+                if (!exportJson.sheets || exportJson.sheets.length === 0) {
+                  reject(new Error('Unable to read spreadsheet content.'))
+                  return
+                }
+                resolve(exportJson)
+              },
+              undefined,
+              function () {
+                reject(new Error('Unable to read spreadsheet content.'))
+              }
+            )
+          }),
+        ])
+          .then(([overrides, exportJson]) => {
+            loading.style.display = 'none'
+            if (window.luckysheet && window.luckysheet.destroy) {
+              window.luckysheet.destroy()
+            }
+            buildWorkbook(exportJson, overrides)
+          })
+          .catch(() => {
             showError('Unable to read spreadsheet content.')
-            return
-          }
-
-          loading.style.display = 'none'
-          if (window.luckysheet && window.luckysheet.destroy) {
-            window.luckysheet.destroy()
-          }
-          buildWorkbook(exportJson)
-        }, undefined, function () {
-          showError('Unable to read spreadsheet content.')
-        })
+          })
       }
     </script>
   </body>

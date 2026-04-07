@@ -100,6 +100,71 @@ Key settings:
 - `preview.remote.max-file-size-bytes`: maximum accepted remote file size
 - `preview.remote.allow-redirects`: whether the backend follows HTTP redirects
 
+## Legacy Entry Point
+
+Older deployments can still call the legacy entry point:
+
+```text
+/onlinePreview?url=<BASE64-ENCODED-URL>
+```
+
+The backend decodes the Base64 value in `url`, then redirects to the modern `?fileUrl=` flow under the current context path.
+
+This endpoint is only for compatibility with older integrations. New callers should use `?fileUrl=` directly.
+
+Example:
+
+```text
+/onlinePreview?url=aHR0cHM6Ly9leGFtcGxlLmNvbS9maWxlcy9yZXBvcnQucGRm
+```
+
+That request becomes a redirect to:
+
+```text
+/?fileUrl=https%3A%2F%2Fexample.com%2Ffiles%2Freport.pdf
+```
+
+### Internal Fetch Rewrite
+
+If the backend can reach an internal file server directly, but the browser must still use a public URL that goes through Cloudflare or Entra, you can rewrite the backend fetch target while keeping the browser-facing URL unchanged.
+
+Example:
+
+```bash
+export PREVIEW_REMOTE_REWRITE_HOST=127.0.0.1
+export PREVIEW_REMOTE_REWRITE_SCHEME=http
+export PREVIEW_REMOTE_REWRITE_PORT=12580
+```
+
+With that configuration, a source URL such as `https://files.example.com/reports/demo.docx` is fetched from the rewritten internal target `http://127.0.0.1:12580/reports/demo.docx`.
+
+Notes:
+
+- The rewrite only affects the backend fetch path.
+- `preview.remote.allowed-hosts` is still checked against the original `fileUrl` host before the rewrite happens.
+- If you use rewrite mode, either leave `allowed-hosts` empty or include the original public host in the allowlist.
+
+## Subpath Deployment
+
+The app can also be mounted behind a path prefix, such as `/fileViewer/`.
+
+Set the backend context path and keep the frontend build using relative asset URLs:
+
+```bash
+export SERVER_SERVLET_CONTEXT_PATH=/fileViewer
+```
+
+Then open the app under that prefix, for example:
+
+```text
+https://example.com/fileViewer/
+```
+
+Notes:
+
+- The frontend build is configured to use relative paths, so static assets keep working under a prefix.
+- The backend also rewrites preview responses so spreadsheet and HTML assets stay inside the same prefix.
+
 Startup behavior:
 
 - Spring Boot binds these values when the backend starts.

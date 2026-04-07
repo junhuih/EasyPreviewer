@@ -3525,7 +3525,7 @@ var LuckyFile = /** @class */function (_super) {
       } else if (istring in lens) {
         gap = lens[istring];
       }
-      allGap += Math.round(gap + 1);
+      allGap += gap + 1;
       sets.push(allGap);
     }
   };
@@ -3876,6 +3876,7 @@ var Image = /** @class */function (_super) {
   __extends(Image, _super);
   function Image(pathName, base64) {
     var _this = _super.call(this) || this;
+    _this.pathName = pathName;
     _this.src = base64;
     return _this;
   }
@@ -3938,8 +3939,102 @@ var LuckySheet = /** @class */function (_super) {
     _this.sheetList = allFileOption.sheetList;
     _this.imageList = allFileOption.imageList;
     _this.hide = allFileOption.hide;
+    _this._imgDebug = [];
     console.log(allFileOption, 'allFileOption');
     _this.dataVerificationSelectCount = allFileOption.dataVerificationSelectCount;
+    var calcOffset = function (index, def, hidden, lens) {
+      var total = 0;
+      for (var i = 0; i < index; i++) {
+        var gap = def;
+        var istring = i.toString();
+        if (istring in hidden) {
+          gap = 0;
+        } else if (istring in lens) {
+          gap = lens[istring];
+        }
+        total += gap + 1;
+      }
+      return total;
+    };
+    var calcCellByOffset = function (offset, def, hidden, lens) {
+      var total = 0;
+      var index = 0;
+      var maxIndex = Math.max(Object.keys(hidden || {}).length, Object.keys(lens || {}).length) + 2000;
+      while (index < maxIndex) {
+        var gap = def;
+        var istring = index.toString();
+        if (istring in hidden) {
+          gap = 0;
+        } else if (istring in lens) {
+          gap = lens[istring];
+        }
+        var span = gap + 1;
+        if (total + span > offset) {
+          return {
+            index: index,
+            offset: offset - total
+          };
+        }
+        total += span;
+        index++;
+      }
+      return {
+        index: index,
+        offset: offset - total
+      };
+    };
+    var pushImageObject = function (imageObject, rembed, x_n, y_n, cx_n, cy_n, type) {
+      imageObject.originWidth = cx_n;
+      imageObject.originHeight = cy_n;
+      imageObject.type = type;
+      imageObject.isFixedPos = false;
+      imageObject.fixedLeft = 0;
+      imageObject.fixedTop = 0;
+      imageObject.border = {
+        color: "#000",
+        radius: 0,
+        style: "solid",
+        width: 0
+      };
+      imageObject.crop = {
+        height: cy_n,
+        offsetLeft: 0,
+        offsetTop: 0,
+        width: cx_n
+      };
+      imageObject["default"] = {
+        height: cy_n,
+        left: x_n,
+        top: y_n,
+        width: cx_n
+      };
+      if (_this.images == null) {
+        _this.images = {};
+      }
+      imageObject.rid = rembed;
+      imageObject.sourcePath = imageObject.pathName || null;
+      var imageKey = "image_" + _this._imgDebug.length;
+      _this._imgDebug.push({
+        key: imageKey,
+        rid: rembed,
+        sourcePath: imageObject.sourcePath,
+        fromCol: imageObject.fromCol,
+        fromColOff: imageObject.fromColOff,
+        fromRow: imageObject.fromRow,
+        fromRowOff: imageObject.fromRowOff,
+        toCol: imageObject.toCol,
+        toColOff: imageObject.toColOff,
+        toRow: imageObject.toRow,
+        toRowOff: imageObject.toRowOff,
+        default: imageObject["default"],
+        crop: imageObject.crop,
+        originWidth: imageObject.originWidth,
+        originHeight: imageObject.originHeight,
+        type: imageObject.type,
+        isFixedPos: imageObject.isFixedPos
+      });
+      _this.images[imageKey] = imageObject;
+    };
     //Output
     _this.name = sheetName;
     _this.index = sheetId;
@@ -4111,6 +4206,9 @@ var LuckySheet = /** @class */function (_super) {
             var xdrFrom = xdrFroms[0],
               xdrTo = xdrTos[0],
               xdr_blipfill = xdr_blipfills[0];
+            if (xdrTo == null) {
+              continue;
+            }
             var rembed = method_1.getXmlAttibute(xdr_blipfill.attributeList, "r:embed", null);
             var imageObject = _this.getBase64ByRid(rembed, drawingRelsFile);
             // let aoff = xdr_xfrm.getInnerElements("a:off"), aext = xdr_xfrm.getInnerElements("a:ext");
@@ -4135,6 +4233,10 @@ var LuckySheet = /** @class */function (_super) {
             imageObject.toColOff = method_1.getPxByEMUs(_this.getXdrValue(xdrTo.getInnerElements("xdr:colOff")));
             imageObject.toRow = _this.getXdrValue(xdrTo.getInnerElements("xdr:row"));
             imageObject.toRowOff = method_1.getPxByEMUs(_this.getXdrValue(xdrTo.getInnerElements("xdr:rowOff")));
+            x_n = calcOffset(imageObject.fromCol, _this.defaultColWidth, _this.config.colhidden || {}, _this.config.columnlen || {}) + imageObject.fromColOff;
+            y_n = calcOffset(imageObject.fromRow, _this.defaultRowHeight, _this.config.rowhidden || {}, _this.config.rowlen || {}) + imageObject.fromRowOff;
+            cx_n = calcOffset(imageObject.toCol, _this.defaultColWidth, _this.config.colhidden || {}, _this.config.columnlen || {}) + imageObject.toColOff - x_n;
+            cy_n = calcOffset(imageObject.toRow, _this.defaultRowHeight, _this.config.rowhidden || {}, _this.config.rowlen || {}) + imageObject.toRowOff - y_n;
             imageObject.originWidth = cx_n;
             imageObject.originHeight = cy_n;
             if (editAs == "absolute") {
@@ -4168,15 +4270,84 @@ var LuckySheet = /** @class */function (_super) {
               width: cx_n
             };
             imageObject["default"] = imageDefault;
-            if (_this.images == null) {
-              _this.images = {};
-            }
-            _this.images[method_1.generateRandomIndex("image")] = imageObject;
+            pushImageObject(imageObject, rembed, x_n, y_n, cx_n, cy_n, imageObject.type);
             //     }
             // }
           }
         }
       }
+      var oneCellAnchors = _this.readXml.getElementsByTagName("xdr:oneCellAnchor", drawingFile);
+      if (oneCellAnchors != null && oneCellAnchors.length > 0) {
+        for (var j = 0; j < oneCellAnchors.length; j++) {
+          var oneCellAnchor = oneCellAnchors[j];
+          var xdrFroms = oneCellAnchor.getInnerElements("xdr:from"),
+            xdrExts = oneCellAnchor.getInnerElements("xdr:ext"),
+            xdr_blipfills = oneCellAnchor.getInnerElements("a:blip");
+          if (xdrFroms != null && xdrExts != null && xdr_blipfills != null && xdrFroms.length > 0 && xdrExts.length > 0 && xdr_blipfills.length > 0) {
+            var xdrFrom = xdrFroms[0],
+              xdrExt = xdrExts[0],
+              xdr_blipfill = xdr_blipfills[0];
+            var rembed = method_1.getXmlAttibute(xdr_blipfill.attributeList, "r:embed", null);
+            var imageObject = _this.getBase64ByRid(rembed, drawingRelsFile);
+            var x_n = calcOffset(_this.getXdrValue(xdrFrom.getInnerElements("xdr:col")), _this.defaultColWidth, _this.config.colhidden || {}, _this.config.columnlen || {}) + method_1.getPxByEMUs(_this.getXdrValue(xdrFrom.getInnerElements("xdr:colOff")));
+            var y_n = calcOffset(_this.getXdrValue(xdrFrom.getInnerElements("xdr:row")), _this.defaultRowHeight, _this.config.rowhidden || {}, _this.config.rowlen || {}) + method_1.getPxByEMUs(_this.getXdrValue(xdrFrom.getInnerElements("xdr:rowOff")));
+            var cx_n = method_1.getPxByEMUs(method_1.getXmlAttibute(xdrExt.attributeList, "cx", "0"));
+            var cy_n = method_1.getPxByEMUs(method_1.getXmlAttibute(xdrExt.attributeList, "cy", "0"));
+            var toCol = calcCellByOffset(x_n + cx_n, _this.defaultColWidth, _this.config.colhidden || {}, _this.config.columnlen || {});
+            var toRow = calcCellByOffset(y_n + cy_n, _this.defaultRowHeight, _this.config.rowhidden || {}, _this.config.rowlen || {});
+            imageObject.fromCol = _this.getXdrValue(xdrFrom.getInnerElements("xdr:col"));
+            imageObject.fromColOff = method_1.getPxByEMUs(_this.getXdrValue(xdrFrom.getInnerElements("xdr:colOff")));
+            imageObject.fromRow = _this.getXdrValue(xdrFrom.getInnerElements("xdr:row"));
+            imageObject.fromRowOff = method_1.getPxByEMUs(_this.getXdrValue(xdrFrom.getInnerElements("xdr:rowOff")));
+            imageObject.toCol = toCol.index;
+            imageObject.toColOff = toCol.offset;
+            imageObject.toRow = toRow.index;
+            imageObject.toRowOff = toRow.offset;
+            pushImageObject(imageObject, rembed, x_n, y_n, cx_n, cy_n, "2");
+          }
+        }
+      }
+      var absoluteAnchors = _this.readXml.getElementsByTagName("xdr:absoluteAnchor", drawingFile);
+      if (absoluteAnchors != null && absoluteAnchors.length > 0) {
+        for (var k = 0; k < absoluteAnchors.length; k++) {
+          var absoluteAnchor = absoluteAnchors[k];
+          var xdrPos = absoluteAnchor.getInnerElements("xdr:pos"),
+            xdrExts = absoluteAnchor.getInnerElements("xdr:ext"),
+            xdr_blipfills = absoluteAnchor.getInnerElements("a:blip");
+          if (xdrPos != null && xdrExts != null && xdr_blipfills != null && xdrPos.length > 0 && xdrExts.length > 0 && xdr_blipfills.length > 0) {
+            var xdrPosEle = xdrPos[0],
+              xdrExt = xdrExts[0],
+              xdr_blipfill = xdr_blipfills[0];
+            var rembed = method_1.getXmlAttibute(xdr_blipfill.attributeList, "r:embed", null);
+            var imageObject = _this.getBase64ByRid(rembed, drawingRelsFile);
+            var x_n = method_1.getPxByEMUs(method_1.getXmlAttibute(xdrPosEle.attributeList, "x", "0"));
+            var y_n = method_1.getPxByEMUs(method_1.getXmlAttibute(xdrPosEle.attributeList, "y", "0"));
+            var cx_n = method_1.getPxByEMUs(method_1.getXmlAttibute(xdrExt.attributeList, "cx", "0"));
+            var cy_n = method_1.getPxByEMUs(method_1.getXmlAttibute(xdrExt.attributeList, "cy", "0"));
+            var fromCol = calcCellByOffset(x_n, _this.defaultColWidth, _this.config.colhidden || {}, _this.config.columnlen || {});
+            var fromRow = calcCellByOffset(y_n, _this.defaultRowHeight, _this.config.rowhidden || {}, _this.config.rowlen || {});
+            var toCol = calcCellByOffset(x_n + cx_n, _this.defaultColWidth, _this.config.colhidden || {}, _this.config.columnlen || {});
+            var toRow = calcCellByOffset(y_n + cy_n, _this.defaultRowHeight, _this.config.rowhidden || {}, _this.config.rowlen || {});
+            imageObject.fromCol = fromCol.index;
+            imageObject.fromColOff = fromCol.offset;
+            imageObject.fromRow = fromRow.index;
+            imageObject.fromRowOff = fromRow.offset;
+            imageObject.toCol = toCol.index;
+            imageObject.toColOff = toCol.offset;
+            imageObject.toRow = toRow.index;
+            imageObject.toRowOff = toRow.offset;
+            pushImageObject(imageObject, rembed, x_n, y_n, cx_n, cy_n, "3");
+          }
+        }
+      }
+    }
+    if (_this._imgDebug != null && _this._imgDebug.length > 0) {
+      console.log("IMG_DEBUG", JSON.stringify({
+        sheetName: _this.name,
+        sheetId: _this.index,
+        imageCount: _this._imgDebug.length,
+        images: _this._imgDebug
+      }, null, 2));
     }
 
     return _this;
@@ -6473,7 +6644,7 @@ exports.getColumnWidthPixel = getColumnWidthPixel;
  * @return pixel row height
 */
 function getRowHeightPixel(rowHeight) {
-  var pix = Math.round(rowHeight / getptToPxRatioByDPI());
+  var pix = rowHeight / getptToPxRatioByDPI();
   return pix;
 }
 exports.getRowHeightPixel = getRowHeightPixel;
@@ -7421,4 +7592,3 @@ module.exports = main_1.LuckyExcel;
 
 },{"./main":19}]},{},[20])(20)
 });
-

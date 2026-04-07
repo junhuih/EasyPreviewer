@@ -42,9 +42,12 @@ public class RemoteContentService {
     void logRemoteConfiguration() {
         PreviewProperties.Remote remote = previewProperties.getRemote();
         log.info(
-                "Remote file config loaded: baseUrl='{}', allowedHosts={}, connectTimeoutMs={}, readTimeoutMs={}, maxFileSizeBytes={}, allowRedirects={}",
+                "Remote file config loaded: baseUrl='{}', allowedHosts={}, rewriteHost='{}', rewriteScheme='{}', rewritePort='{}', connectTimeoutMs={}, readTimeoutMs={}, maxFileSizeBytes={}, allowRedirects={}",
                 blankToEmpty(remote.getBaseUrl()),
                 remote.getAllowedHosts(),
+                blankToEmpty(remote.getRewriteHost()),
+                blankToEmpty(remote.getRewriteScheme()),
+                blankToEmpty(remote.getRewritePort()),
                 remote.getConnectTimeoutMs(),
                 remote.getReadTimeoutMs(),
                 remote.getMaxFileSizeBytes(),
@@ -70,14 +73,18 @@ public class RemoteContentService {
     }
 
     public InputStream openStream(String sourceUrl) throws Exception {
-        HttpResponse<InputStream> response = sendRequest(normalizeSourceUrl(sourceUrl), HttpResponse.BodyHandlers.ofInputStream());
+        HttpResponse<InputStream> response = sendRequest(normalizeFetchUrl(sourceUrl), HttpResponse.BodyHandlers.ofInputStream());
         long contentLength = response.headers().firstValueAsLong("Content-Length").orElse(-1L);
         validateContentLength(contentLength);
         return new BoundedInputStream(response.body(), previewProperties.getRemote().getMaxFileSizeBytes());
     }
 
+    public HttpResponse<InputStream> openResponse(String sourceUrl, String rangeHeader) throws Exception {
+        return sendRequestWithRange(normalizeFetchUrl(sourceUrl), rangeHeader, HttpResponse.BodyHandlers.ofInputStream());
+    }
+
     public Path downloadToTempFile(String sourceUrl, String fileName) throws Exception {
-        String normalizedSourceUrl = normalizeSourceUrl(sourceUrl);
+        String normalizedSourceUrl = normalizeFetchUrl(sourceUrl);
         String suffix = fileName.contains(".")
                 ? fileName.substring(fileName.lastIndexOf('.'))
                 : ".bin";
@@ -86,6 +93,23 @@ public class RemoteContentService {
             copyWithLimit(inputStream, tempFile);
         }
         return tempFile;
+    }
+
+    String normalizeFetchUrl(String sourceUrl) {
+        try {
+            URI uri = resolveUri(sourceUrl);
+            URI rewritten = rewriteUri(uri);
+            String scheme = rewritten.getScheme();
+            if (scheme == null || (!"http".equalsIgnoreCase(scheme) && !"https".equalsIgnoreCase(scheme))) {
+                throw new IllegalArgumentException("preview.invalid.url");
+            }
+            return rewritten.toString();
+        } catch (IllegalArgumentException ex) {
+            if (ex.getMessage() != null && ex.getMessage().startsWith("preview.")) {
+                throw ex;
+            }
+            throw new IllegalArgumentException("preview.invalid.url");
+        }
     }
 
     private URI resolveUri(String sourceUrl) {
@@ -99,6 +123,30 @@ public class RemoteContentService {
             throw new IllegalArgumentException("preview.remote.base-url.required");
         }
         return URI.create(baseUrl).resolve(uri);
+    }
+
+    private URI rewriteUri(URI uri) {
+        String rewriteHost = blankToEmpty(previewProperties.getRemote().getRewriteHost());
+        String rewriteScheme = blankToEmpty(previewProperties.getRemote().getRewriteScheme());
+        Integer rewritePort = parsePort(previewProperties.getRemote().getRewritePort());
+
+        if (rewriteHost.isBlank() && rewriteScheme.isBlank() && rewritePort == null) {
+            return uri;
+        }
+
+        try {
+            return new URI(
+                    rewriteScheme.isBlank() ? uri.getScheme() : rewriteScheme,
+                    uri.getUserInfo(),
+                    rewriteHost.isBlank() ? uri.getHost() : rewriteHost,
+                    rewritePort != null ? rewritePort : uri.getPort(),
+                    uri.getPath(),
+                    uri.getQuery(),
+                    uri.getFragment()
+            );
+        } catch (Exception exception) {
+            throw new IllegalArgumentException("preview.invalid.url", exception);
+        }
     }
 
     private void validateAllowedHost(URI uri) {
@@ -122,6 +170,10 @@ public class RemoteContentService {
     }
 
     private <T> HttpResponse<T> sendRequest(String sourceUrl, HttpResponse.BodyHandler<T> bodyHandler) throws Exception {
+        return sendRequestWithRange(sourceUrl, null, bodyHandler);
+    }
+
+    private <T> HttpResponse<T> sendRequestWithRange(String sourceUrl, String rangeHeader, HttpResponse.BodyHandler<T> bodyHandler) throws Exception {
         HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(sourceUrl))
                 .GET()
                 .timeout(Duration.ofMillis(previewProperties.getRemote().getReadTimeoutMs()));
@@ -136,6 +188,10 @@ public class RemoteContentService {
                     && entry.getValue() != null && !entry.getValue().isBlank()) {
                 builder.header(entry.getKey(), entry.getValue());
             }
+        }
+
+        if (rangeHeader != null && !rangeHeader.isBlank()) {
+            builder.header("Range", rangeHeader);
         }
 
         HttpResponse<T> response = httpClient.send(builder.build(), bodyHandler);
@@ -175,6 +231,19 @@ public class RemoteContentService {
 
     private String blankToEmpty(String value) {
         return value == null ? "" : value.trim();
+    }
+
+    private Integer parsePort(String value) {
+        String normalized = blankToEmpty(value);
+        if (normalized.isBlank()) {
+            return null;
+        }
+
+        try {
+            return Integer.parseInt(normalized);
+        } catch (NumberFormatException ex) {
+            throw new IllegalArgumentException("preview.invalid.url", ex);
+        }
     }
 
     private static final class BoundedInputStream extends FilterInputStream {

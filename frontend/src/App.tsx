@@ -7,6 +7,8 @@ const backendError = (fallback: string) => ({
   message: fallback,
 })
 
+const currentAppUrl = () => new URL(window.location.href)
+
 const demoFiles = [
   {
     fileName: 'sample-complex.docx',
@@ -114,7 +116,7 @@ function App() {
     setLoading(true)
     setError(null)
     try {
-      const response = await fetch('/api/previews/resolve', {
+      const response = await fetch('api/previews/resolve', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -138,7 +140,7 @@ function App() {
   }
 
   const openDemo = async (fileName: string) => {
-    const demoUrl = new URL(`/demo/files/${fileName}`, window.location.origin).toString()
+    const demoUrl = new URL(`demo/files/${fileName}`, currentAppUrl()).toString()
     await resolvePreview(demoUrl)
   }
 
