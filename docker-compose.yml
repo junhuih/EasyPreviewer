@@ -9,4 +9,8 @@ services:
       - "8080:8080"
     environment:
       JAVA_OPTS: -Xms512m -Xmx1024m
+      SERVER_SERVLET_CONTEXT_PATH: /easypreviewer
+      PREVIEW_REMOTE_REWRITE_HOST: 192.168.1.45
+      PREVIEW_REMOTE_REWRITE_SCHEME: http
+      PREVIEW_REMOTE_REWRITE_PORT: "-1"
     restart: unless-stopped

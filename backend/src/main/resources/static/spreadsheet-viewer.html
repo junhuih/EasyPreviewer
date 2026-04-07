@@ -349,11 +349,7 @@
           }
         }
 
-        cellMain.addEventListener(
-          'wheel',
-          handleWheel,
-          { passive: false }
-        )
+        cellMain.addEventListener('wheel', handleWheel, { passive: false })
         if (gridWindow) {
           gridWindow.addEventListener('wheel', handleWheel, { passive: false, capture: true })
         }

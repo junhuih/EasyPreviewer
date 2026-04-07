@@ -57,4 +57,19 @@ class RemoteContentServiceTest {
 
         assertEquals("https://files.example.com/demo.pdf", normalized);
     }
+
+    @Test
+    void shouldRewriteFetchUrlForInternalAccess() {
+        PreviewProperties properties = new PreviewProperties();
+        properties.getRemote().setBaseUrl("https://files.example.com/root/");
+        properties.getRemote().setRewriteHost("127.0.0.1");
+        properties.getRemote().setRewriteScheme("http");
+        properties.getRemote().setRewritePort("12580");
+
+        RemoteContentService service = new RemoteContentService(properties);
+
+        String normalized = service.normalizeFetchUrl("reports/demo.docx");
+
+        assertEquals("http://127.0.0.1:12580/root/reports/demo.docx", normalized);
+    }
 }

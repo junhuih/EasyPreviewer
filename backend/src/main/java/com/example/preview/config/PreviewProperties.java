@@ -75,6 +75,9 @@ public class PreviewProperties {
     public static class Remote {
         private String baseUrl = "";
         private List<String> allowedHosts = List.of();
+        private String rewriteHost = "";
+        private String rewriteScheme = "";
+        private String rewritePort = "";
         private Map<String, String> defaultHeaders = new LinkedHashMap<>();
         private long connectTimeoutMs = 5000;
         private long readTimeoutMs = 60000;
@@ -95,6 +98,30 @@ public class PreviewProperties {
 
         public void setAllowedHosts(List<String> allowedHosts) {
             this.allowedHosts = allowedHosts;
+        }
+
+        public String getRewriteHost() {
+            return rewriteHost;
+        }
+
+        public void setRewriteHost(String rewriteHost) {
+            this.rewriteHost = rewriteHost;
+        }
+
+        public String getRewriteScheme() {
+            return rewriteScheme;
+        }
+
+        public void setRewriteScheme(String rewriteScheme) {
+            this.rewriteScheme = rewriteScheme;
+        }
+
+        public String getRewritePort() {
+            return rewritePort;
+        }
+
+        public void setRewritePort(String rewritePort) {
+            this.rewritePort = rewritePort;
         }
 
         public Map<String, String> getDefaultHeaders() {

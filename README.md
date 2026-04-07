@@ -2,6 +2,24 @@
 
 A preview-only file viewer, released under Apache-2.0 with additional third-party components kept under their own licenses.
 
+### Legacy Entry Point
+
+Older deployments can still call `/onlinePreview?url=<BASE64-ENCODED-URL>`. The backend decodes the base64 value, then redirects into the modern `?fileUrl=` flow under the current context path.
+
+This endpoint exists only for compatibility with older integrations. New callers should use `?fileUrl=` directly.
+
+Example:
+
+```text
+/onlinePreview?url=aHR0cHM6Ly9leGFtcGxlLmNvbS9maWxlcy9yZXBvcnQucGRm
+```
+
+That request becomes a redirect to:
+
+```text
+/?fileUrl=https%3A%2F%2Fexample.com%2Ffiles%2Freport.pdf
+```
+
 ## Goals
 
 - Preview files online only
@@ -136,6 +154,21 @@ Available remote settings:
 - `preview.remote.read-timeout-ms`: read timeout for remote fetches
 - `preview.remote.max-file-size-bytes`: maximum remote file size accepted by the backend
 - `preview.remote.allow-redirects`: whether the backend should follow HTTP redirects while fetching the file
+- `preview.remote.rewrite-host`: optional backend fetch host override for internal routing
+- `preview.remote.rewrite-scheme`: optional backend fetch scheme override
+- `preview.remote.rewrite-port`: optional backend fetch port override
+
+Notes:
+
+- The rewrite settings only affect the backend fetch path.
+- `preview.remote.allowed-hosts` still checks the original `fileUrl` host before rewrite.
+- Use rewrite mode when the browser must use a public URL, but the backend can reach a faster internal origin directly.
+
+### Subpath Deployment
+
+The app can be mounted behind a prefix such as `/fileViewer/`.
+
+Set `SERVER_SERVLET_CONTEXT_PATH=/fileViewer` before starting the backend, then open the app under that prefix. The frontend build uses relative asset paths, so the same package works at `/` and under a prefix.
 
 Startup behavior:
 

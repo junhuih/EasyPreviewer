@@ -7,6 +7,8 @@ spring:
 
 server:
   port: 8080
+  servlet:
+    context-path: ${SERVER_SERVLET_CONTEXT_PATH:}
 
 springdoc:
   api-docs:
@@ -27,6 +29,10 @@ preview:
     base-url: ${PREVIEW_REMOTE_BASE_URL:}
     # Optional host allowlist. Leave empty to allow any reachable host.
     allowed-hosts: ${PREVIEW_REMOTE_ALLOWED_HOSTS:}
+    # Optional rewrite target used by the backend fetch path.
+    rewrite-host: ${PREVIEW_REMOTE_REWRITE_HOST:}
+    rewrite-scheme: ${PREVIEW_REMOTE_REWRITE_SCHEME:}
+    rewrite-port: ${PREVIEW_REMOTE_REWRITE_PORT:}
     # Default headers sent when fetching remote files, useful for gateway or auth passthrough.
     default-headers:
       Authorization: ${PREVIEW_REMOTE_AUTHORIZATION:}
