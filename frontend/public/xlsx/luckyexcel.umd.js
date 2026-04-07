@@ -3525,7 +3525,7 @@ var LuckyFile = /** @class */function (_super) {
       } else if (istring in lens) {
         gap = lens[istring];
       }
-      allGap += Math.round(gap + 1);
+      allGap += gap + 1;
       sets.push(allGap);
     }
   };
@@ -6473,7 +6473,7 @@ exports.getColumnWidthPixel = getColumnWidthPixel;
  * @return pixel row height
 */
 function getRowHeightPixel(rowHeight) {
-  var pix = Math.round(rowHeight / getptToPxRatioByDPI());
+  var pix = rowHeight / getptToPxRatioByDPI();
   return pix;
 }
 exports.getRowHeightPixel = getRowHeightPixel;
@@ -7421,4 +7421,3 @@ module.exports = main_1.LuckyExcel;
 
 },{"./main":19}]},{},[20])(20)
 });
-
